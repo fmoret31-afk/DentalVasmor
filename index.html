@@ -3,46 +3,296 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sistema de Control de Inventario</title>
-  <!-- Bootstrap CSS -->
+  <title>Vasmor · Control de Inventario</title>
+  <!-- Bootstrap CSS (base de formularios y grilla) -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <!-- Librería SheetJS para Exportar a Excel -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- Tipografía de marca -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
   <style>
-    body { background-color: #f4f6f9; }
-    label { font-size: 0.85rem; font-weight: 600; color: #495057; margin-bottom: 4px; }
-    .table-container { background: #ffffff; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
-    .table th { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; white-space: nowrap; }
-    .table td { font-size: 0.9rem; vertical-align: middle; white-space: nowrap; }
-    .editing-mode { border: 2px solid #ffc107 !important; }
-    .calc-readonly { background-color: #e9ecef; font-weight: bold; }
+    :root {
+      --ink: #17262A;
+      --muted: #5B7370;
+      --paper: #F3FAF8;
+      --surface: #FFFFFF;
+      --line: #DCEAE7;
+
+      --teal-900: #0B4640;
+      --teal-700: #0E6A63;
+      --teal-600: #128B82;
+      --teal-500: #16A79C;
+      --teal-100: #DDF3EF;
+      --teal-50: #EEFAF7;
+
+      --amber-600: #C4841B;
+      --amber-500: #E2A63B;
+      --amber-100: #FBEDD3;
+
+      --red-600: #C2434D;
+      --red-500: #D6555F;
+      --red-100: #FBE2E3;
+
+      --green-700: #1F7A52;
+      --green-600: #2E9E6B;
+      --green-100: #DCF3E6;
+
+      --shadow-card: 0 8px 24px -12px rgba(11, 70, 64, 0.18);
+      --font-display: 'Manrope', 'Segoe UI', sans-serif;
+      --font-body: 'Inter', 'Segoe UI', sans-serif;
+      --font-mono: 'IBM Plex Mono', 'SFMono-Regular', Menlo, monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      background: var(--paper);
+      background-image:
+        radial-gradient(circle at 100% 0%, var(--teal-50) 0%, transparent 45%),
+        radial-gradient(circle at 0% 100%, var(--teal-50) 0%, transparent 40%);
+      background-attachment: fixed;
+      font-family: var(--font-body);
+      color: var(--ink);
+    }
+
+    label { font-size: 0.72rem; font-weight: 600; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+
+    /* ---------- Encabezado de marca ---------- */
+    .vasmor-header {
+      background: linear-gradient(135deg, var(--teal-900), var(--teal-700));
+      border-radius: 16px;
+      padding: 1.1rem 1.5rem;
+      box-shadow: var(--shadow-card);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.9rem;
+    }
+    .vasmor-brand { display: flex; align-items: center; gap: 0.85rem; }
+    .vasmor-logo {
+      width: 46px; height: 46px; flex-shrink: 0; border-radius: 12px;
+      background: rgba(255,255,255,0.14);
+      display: flex; align-items: center; justify-content: center;
+      border: 1px solid rgba(255,255,255,0.22);
+    }
+    .vasmor-logo svg { width: 26px; height: 26px; stroke: #fff; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .vasmor-wordmark { font-family: var(--font-display); font-weight: 800; font-size: 1.32rem; letter-spacing: 0.01em; line-height: 1.1; margin: 0; }
+    .vasmor-sub { font-size: 0.78rem; color: rgba(255,255,255,0.78); font-weight: 500; margin: 0; }
+    .vasmor-header-actions { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; }
+
+    .estado-conexion {
+      display: inline-flex; align-items: center; gap: 0.45rem;
+      background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.22);
+      color: #fff; font-size: 0.76rem; font-weight: 600;
+      padding: 0.42rem 0.85rem; border-radius: 999px;
+    }
+    .estado-conexion .dot-live {
+      width: 7px; height: 7px; border-radius: 50%; background: #6BE3B4;
+      box-shadow: 0 0 0 3px rgba(107,227,180,0.28);
+      animation: pulse-live 1.8s ease-in-out infinite;
+    }
+    @keyframes pulse-live { 0%,100% { opacity: 1; } 50% { opacity: 0.45; } }
+
+    .btn-excel {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      background: #fff; color: var(--teal-800, var(--teal-700));
+      border: none; font-weight: 700; font-size: 0.82rem;
+      padding: 0.5rem 1.05rem; border-radius: 999px;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .btn-excel:hover { transform: translateY(-1px); box-shadow: 0 6px 14px rgba(0,0,0,0.18); color: var(--teal-700); }
+    .btn-excel svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+    /* ---------- Tarjeta de formulario ---------- */
+    .vasmor-card {
+      background: var(--surface);
+      border-radius: 16px;
+      box-shadow: var(--shadow-card);
+      border: 1px solid var(--line);
+      overflow: hidden;
+      transition: box-shadow 0.2s ease;
+    }
+    .vasmor-card.editing-mode {
+      box-shadow: 0 0 0 3px var(--amber-100), var(--shadow-card);
+      border-top: 4px solid var(--amber-500);
+    }
+
+    #headerFormulario {
+      background: var(--surface) !important;
+      color: var(--ink) !important;
+      border-bottom: 1px solid var(--line);
+      padding: 1.1rem 1.4rem;
+    }
+    #tituloFormulario { font-family: var(--font-display); font-weight: 700; font-size: 1.02rem; color: var(--teal-900); display: flex; align-items: center; gap: 0.55rem; }
+    #tituloFormulario::before {
+      content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+      background: var(--teal-500);
+    }
+    #badgeModo {
+      background: var(--amber-100) !important; color: var(--amber-600) !important;
+      font-weight: 700; font-size: 0.68rem; letter-spacing: 0.04em; text-transform: uppercase;
+      padding: 0.35rem 0.75rem; border-radius: 999px;
+    }
+
+    .form-eyebrow {
+      font-family: var(--font-display); font-size: 0.68rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.08em; color: var(--teal-600);
+      margin: 0.2rem 0 0.1rem; display: flex; align-items: center; gap: 0.5rem;
+    }
+    .form-eyebrow::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+
+    .card-body { padding: 1.5rem; }
+
+    .form-control, .form-select {
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      font-size: 0.88rem;
+      padding: 0.5rem 0.75rem;
+      color: var(--ink);
+      background-color: var(--surface);
+    }
+    .form-control::placeholder { color: #9FB3B0; }
+    .form-control:focus, .form-select:focus {
+      border-color: var(--teal-500);
+      box-shadow: 0 0 0 3px var(--teal-100);
+    }
+    .calc-readonly {
+      background-color: var(--teal-50) !important;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      color: var(--teal-800, var(--teal-700));
+      border-style: dashed;
+    }
+
+    /* Botones (Bootstrap resetea className por JS, así que se sobreescriben las clases base) */
+    .btn { border-radius: 9px; font-size: 0.86rem; font-weight: 600; padding: 0.52rem 1.1rem; transition: all 0.15s ease; border-width: 1px; }
+    .btn-primary { background-color: var(--teal-600); border-color: var(--teal-600); }
+    .btn-primary:hover, .btn-primary:focus { background-color: var(--teal-700); border-color: var(--teal-700); }
+    .btn-warning { background-color: var(--amber-500); border-color: var(--amber-500); color: #fff; }
+    .btn-warning:hover, .btn-warning:focus { background-color: var(--amber-600); border-color: var(--amber-600); color: #fff; }
+    .btn-secondary { background-color: transparent; border-color: var(--line); color: var(--muted); }
+    .btn-secondary:hover, .btn-secondary:focus { background-color: var(--paper); border-color: var(--muted); color: var(--ink); }
+    .btn-success { background-color: var(--teal-700); border-color: var(--teal-700); }
+    .btn:focus-visible { outline: 2px solid var(--teal-500); outline-offset: 2px; }
+
+    /* ---------- Tabla ---------- */
+    .table-container {
+      background: var(--surface);
+      border-radius: 16px !important;
+      box-shadow: var(--shadow-card);
+      border: 1px solid var(--line) !important;
+    }
+    .table-container .table-responsive { border-radius: 12px; max-height: 62vh; overflow: auto; }
+    .table { margin-bottom: 0; font-family: var(--font-body); }
+    .table thead.table-dark, .table thead.table-dark th {
+      background-color: var(--teal-900) !important;
+      color: #EAF6F4 !important;
+      border-color: var(--teal-900) !important;
+    }
+    .table th {
+      font-family: var(--font-display);
+      font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em;
+      text-transform: uppercase; white-space: nowrap;
+      position: sticky; top: 0; z-index: 2;
+      padding: 0.85rem 0.9rem;
+    }
+    .table td { font-size: 0.86rem; vertical-align: middle; white-space: nowrap; padding: 0.7rem 0.9rem; border-color: var(--line); }
+    .table-striped > tbody > tr:nth-of-type(odd) > * { background-color: var(--teal-50); }
+    .table-hover > tbody > tr:hover > * { background-color: var(--teal-100); }
+
+    .table tbody tr { border-left: 4px solid transparent; }
+    .table tbody tr.fila-ok { border-left-color: var(--green-600); }
+    .table tbody tr.fila-bajo { border-left-color: var(--amber-500); }
+    .table tbody tr.fila-agotado { border-left-color: var(--red-500); }
+
+    .celda-codigo { font-family: var(--font-mono); font-weight: 600; color: var(--teal-800, var(--teal-700)); background: var(--teal-50); padding: 0.15rem 0.5rem; border-radius: 6px; }
+    .num-mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+    .num-fuerte { font-weight: 600; }
+    .valor-positivo { color: var(--green-700); font-weight: 600; }
+    .pill-categoria { background: var(--teal-100); color: var(--teal-800, var(--teal-700)); font-size: 0.74rem; font-weight: 600; padding: 0.18rem 0.6rem; border-radius: 999px; }
+
+    .badge-estado, .badge-general {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-family: var(--font-body); font-size: 0.74rem; font-weight: 600;
+      padding: 0.3rem 0.65rem; border-radius: 999px;
+    }
+    .badge-estado .dot, .badge-general .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+    .badge-estado.ok { background: var(--green-100); color: var(--green-700); }
+    .badge-estado.ok .dot { background: var(--green-600); }
+    .badge-estado.bajo { background: var(--amber-100); color: var(--amber-600); }
+    .badge-estado.bajo .dot { background: var(--amber-500); }
+    .badge-estado.agotado { background: var(--red-100); color: var(--red-600); }
+    .badge-estado.agotado .dot { background: var(--red-500); }
+    .badge-general.activo { background: var(--teal-100); color: var(--teal-800, var(--teal-700)); }
+    .badge-general.activo .dot { background: var(--teal-600); }
+    .badge-general.inactivo { background: #EDEFEF; color: var(--muted); }
+    .badge-general.inactivo .dot { background: #9AA8A6; }
+
+    .acciones-fila { display: flex; gap: 0.35rem; justify-content: center; }
+    .btn-icon {
+      width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--line);
+      background: var(--surface); display: inline-flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: all 0.15s ease;
+    }
+    .btn-icon svg { width: 15px; height: 15px; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+    .btn-icon-edit svg { stroke: var(--amber-600); }
+    .btn-icon-edit:hover { background: var(--amber-100); border-color: var(--amber-500); }
+    .btn-icon-delete svg { stroke: var(--red-600); }
+    .btn-icon-delete:hover { background: var(--red-100); border-color: var(--red-500); }
+
+    .estado-vacio { padding: 2.2rem 1rem; text-align: center; color: var(--muted); }
+    .estado-vacio svg { width: 34px; height: 34px; stroke: var(--teal-300, var(--teal-500)); fill: none; stroke-width: 1.6; margin-bottom: 0.6rem; }
+
+    ::-webkit-scrollbar { height: 10px; width: 10px; }
+    ::-webkit-scrollbar-track { background: var(--teal-50); }
+    ::-webkit-scrollbar-thumb { background: var(--teal-100); border-radius: 999px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--teal-500); }
+
+    @media (max-width: 767px) {
+      .vasmor-header { border-radius: 14px; padding: 1rem; }
+      .card-body { padding: 1.1rem; }
+    }
   </style>
 </head>
 <body class="p-3 p-md-4">
 
-<div class="container-fluid">
+<div class="container-fluid" style="max-width: 1400px;">
   <!-- Encabezado Principal -->
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2 class="h3 fw-bold text-primary mb-0">📦 Control de Inventario</h2>
-    <div>
-      <button type="button" class="btn btn-success me-2" onclick="descargarExcel()">
-        📊 Descargar Excel (.xlsx)
+  <div class="vasmor-header mb-4">
+    <div class="vasmor-brand">
+      <div class="vasmor-logo">
+        <svg viewBox="0 0 24 24"><path d="M12 3c-2.2 0-3.6 1.1-4.6 1.1-1 0-1.9-.6-3-.5-1.3.1-2.5.9-3.1 2.1-1.4 2.4-.4 6 1 8 .9 1.4 2 2.9 3.4 2.9 1.3-.1 1.8-.9 3.3-.9s2 .9 3.3.8c1.4 0 2.3-1.3 3.2-2.7.6-1 .9-1.5 1.4-2.6-3.6-1.4-4.2-6.5-.6-8.5-1-1.5-2.6-2.4-4.3-2.5"/><path d="M12.5 3.5c.3-1 1.2-1.9 2.2-2"/></svg>
+      </div>
+      <div>
+        <p class="vasmor-wordmark">Vasmor</p>
+        <p class="vasmor-sub">Clínica Dental · Control de Inventario</p>
+      </div>
+    </div>
+    <div class="vasmor-header-actions">
+      <span class="estado-conexion"><span class="dot-live"></span> Conectado</span>
+      <button type="button" class="btn-excel" onclick="descargarExcel()">
+        <svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 19h16"/></svg>
+        Descargar Excel
       </button>
-      <span class="badge bg-primary px-3 py-2">Estado: Conectado</span>
     </div>
   </div>
 
   <!-- Formulario de Entrada / Edición de Datos -->
-  <div class="card mb-4 shadow-sm border-0" id="cardFormulario">
-    <div class="card-header bg-primary text-white fw-bold d-flex justify-content-between align-items-center" id="headerFormulario">
-      <span id="tituloFormulario">📝 Formulario de Registro / Edición</span>
-      <span id="badgeModo" class="badge bg-light text-dark d-none">Modo Edición</span>
+  <div class="vasmor-card mb-4" id="cardFormulario">
+    <div class="d-flex justify-content-between align-items-center" id="headerFormulario">
+      <span id="tituloFormulario">Formulario de registro / edición</span>
+      <span id="badgeModo" class="badge d-none">Modo edición</span>
     </div>
     <div class="card-body">
       <form id="formInventario" class="row g-3">
         <!-- Campo oculto para almacenar el número de fila al editar -->
         <input type="hidden" id="rowIndex" value="">
-        
+
+        <div class="col-12"><p class="form-eyebrow">Datos generales</p></div>
         <!-- Fila 1: Datos Generales -->
         <div class="col-md-2">
           <label for="codigo">Código</label>
@@ -65,6 +315,7 @@
           <input type="date" id="fechaVencimiento" class="form-control">
         </div>
 
+        <div class="col-12"><p class="form-eyebrow">Cantidades y costos</p></div>
         <!-- Fila 2: Cantidades, Precio y Totales -->
         <div class="col-md-2">
           <label for="unidad">Unidad</label>
@@ -91,6 +342,7 @@
           <input type="text" id="valorTotalStock" class="form-control calc-readonly" readonly placeholder="S/ 0.00">
         </div>
 
+        <div class="col-12"><p class="form-eyebrow">Estado del producto</p></div>
         <!-- Fila 3: Estados -->
         <div class="col-md-3">
           <label for="estadoActual">Estado Actual</label>
@@ -127,21 +379,24 @@
             <th>Descripción</th>
             <th>Categoría</th>
             <th>Lote</th>
-            <th>Fecha Vencimiento</th>
+            <th>Vencimiento</th>
             <th>Unidad</th>
             <th>Stock Actual</th>
-            <th>Valor Total Actual (S/)</th>
+            <th>Valor Actual (S/)</th>
             <th>Estado Actual</th>
             <th>Stock Inicial</th>
             <th>Costo Unit. (S/)</th>
-            <th>Valor Total Stock (S/)</th>
+            <th>Valor Stock (S/)</th>
             <th>Estado</th>
             <th class="text-center">Acciones</th>
           </tr>
         </thead>
         <tbody id="tablaCuerpo">
           <tr>
-            <td colspan="14" class="text-center py-4 text-muted">Cargando datos del inventario...</td>
+            <td colspan="14" class="estado-vacio">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+              <div>Cargando datos del inventario…</div>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -190,7 +445,11 @@
       const data = await res.json();
       
       if (!Array.isArray(data) || data.length <= 1) {
-        document.getElementById("tablaCuerpo").innerHTML = '<tr><td colspan="14" class="text-center py-4">No hay registros guardados.</td></tr>';
+        document.getElementById("tablaCuerpo").innerHTML = `
+          <tr><td colspan="14" class="estado-vacio">
+            <svg viewBox="0 0 24 24"><path d="M3 7l9-4 9 4-9 4-9-4Z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/></svg>
+            <div>No hay registros guardados todavía.</div>
+          </td></tr>`;
         datosActuales = [];
         return;
       }
@@ -212,24 +471,36 @@
         const valorTotalStock = stockInicial * precioCosto;
         const fechaVenc = formatearFecha(f[4]);
 
+        const estadoActualVal = f[8] || 'Disponible';
+        const estadoGeneralVal = f[12] || 'Activo';
+        const claseFila = estadoActualVal === 'Agotado' ? 'fila-agotado' : estadoActualVal === 'Por Agotarse' ? 'fila-bajo' : 'fila-ok';
+        const claseBadgeEstado = estadoActualVal === 'Agotado' ? 'agotado' : estadoActualVal === 'Por Agotarse' ? 'bajo' : 'ok';
+        const claseBadgeGeneral = estadoGeneralVal === 'Inactivo' ? 'inactivo' : 'activo';
+
         tbody.innerHTML += `
-          <tr>
-            <td><strong>${f[0] || ''}</strong></td>
+          <tr class="${claseFila}">
+            <td><span class="celda-codigo">${f[0] || ''}</span></td>
             <td>${f[1] || ''}</td>
-            <td>${f[2] || ''}</td>
+            <td><span class="pill-categoria">${f[2] || ''}</span></td>
             <td>${f[3] || ''}</td>
             <td>${fechaVenc}</td>
             <td>${f[5] || ''}</td>
-            <td><strong>${stockActual}</strong></td>
-            <td class="text-success fw-bold">S/ ${valorTotalActual.toFixed(2)}</td>
-            <td><span class="badge ${f[8] === 'Agotado' ? 'bg-danger' : f[8] === 'Por Agotarse' ? 'bg-warning text-dark' : 'bg-success'}">${f[8] || 'Disponible'}</span></td>
-            <td>${stockInicial}</td>
-            <td>S/ ${precioCosto.toFixed(2)}</td>
-            <td>S/ ${valorTotalStock.toFixed(2)}</td>
-            <td><span class="badge ${f[12] === 'Inactivo' ? 'bg-secondary' : 'bg-primary'}">${f[12] || 'Activo'}</span></td>
+            <td><span class="num-mono num-fuerte">${stockActual}</span></td>
+            <td><span class="num-mono valor-positivo">S/ ${valorTotalActual.toFixed(2)}</span></td>
+            <td><span class="badge-estado ${claseBadgeEstado}"><span class="dot"></span>${estadoActualVal}</span></td>
+            <td><span class="num-mono">${stockInicial}</span></td>
+            <td><span class="num-mono">S/ ${precioCosto.toFixed(2)}</span></td>
+            <td><span class="num-mono">S/ ${valorTotalStock.toFixed(2)}</span></td>
+            <td><span class="badge-general ${claseBadgeGeneral}"><span class="dot"></span>${estadoGeneralVal}</span></td>
             <td class="text-center">
-              <button class="btn btn-sm btn-outline-warning me-1" onclick="cargarFilaEnFormulario(${numFila})">✏️ Editar</button>
-              <button class="btn btn-sm btn-outline-danger" onclick="eliminarFila(${numFila})">🗑️ Borrar</button>
+              <div class="acciones-fila">
+                <button class="btn-icon btn-icon-edit" onclick="cargarFilaEnFormulario(${numFila})" title="Editar">
+                  <svg viewBox="0 0 24 24"><path d="M4 20l1-4.5L15.5 5l3.5 3.5L8.5 19 4 20Z"/><path d="M13.5 6.5l4 4"/></svg>
+                </button>
+                <button class="btn-icon btn-icon-delete" onclick="eliminarFila(${numFila})" title="Eliminar">
+                  <svg viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M10 11v6M14 11v6"/></svg>
+                </button>
+              </div>
             </td>
           </tr>
         `;
@@ -261,7 +532,7 @@
 
     // Activar estilo de Modo Edición
     document.getElementById("cardFormulario").classList.add("editing-mode");
-    document.getElementById("tituloFormulario").innerText = `✏️ Editando producto en Fila ${rowIndex}`;
+    document.getElementById("tituloFormulario").innerText = `Editando producto — fila ${rowIndex}`;
     document.getElementById("badgeModo").classList.remove("d-none");
     document.getElementById("btnGuardar").innerText = "Actualizar Registro";
     document.getElementById("btnGuardar").className = "btn btn-warning px-4 fw-bold";
@@ -317,7 +588,7 @@
     document.getElementById("valorTotalActual").value = "S/ 0.00";
     document.getElementById("valorTotalStock").value = "S/ 0.00";
     document.getElementById("cardFormulario").classList.remove("editing-mode");
-    document.getElementById("tituloFormulario").innerText = "📝 Formulario de Registro / Edición";
+    document.getElementById("tituloFormulario").innerText = "Formulario de registro / edición";
     document.getElementById("badgeModo").classList.add("d-none");
     document.getElementById("btnGuardar").innerText = "Guardar Registro";
     document.getElementById("btnGuardar").className = "btn btn-primary px-4";
