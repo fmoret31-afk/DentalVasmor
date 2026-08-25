@@ -142,6 +142,15 @@
   const API_URL = "https://script.google.com/macros/s/AKfycbzGCtFIkX0GQAAlIzolkXP7QgO2sfqcFgetRmKadsF12NBdgXZJu_jzfCkt2J44vQeh/exec";
   let datosActuales = []; 
 
+  // Función auxiliar para formatear valores numéricos correctamente
+  function limpiarNumero(val) {
+    if (typeof val === 'string' && val.includes('T') && val.includes('Z')) {
+      return 0; // Si Google Sheets devuelve un ISO String de fecha por error
+    }
+    const num = parseFloat(val);
+    return isNaN(num) ? 0 : num;
+  }
+
   // Cargar inventario desde Google Sheets
   async function cargarInventario() {
     try {
@@ -162,6 +171,12 @@
         const f = data[i];
         const numFila = i + 1;
 
+        const stockActual = limpiarNumero(f[6]);
+        const valorTotalActual = limpiarNumero(f[7]);
+        const stockInicial = limpiarNumero(f[9]);
+        const precioCosto = limpiarNumero(f[10]);
+        const valorTotalStock = limpiarNumero(f[11]);
+
         tbody.innerHTML += `
           <tr>
             <td><strong>${f[0] || ''}</strong></td>
@@ -170,12 +185,12 @@
             <td>${f[3] || ''}</td>
             <td>${f[4] || ''}</td>
             <td>${f[5] || ''}</td>
-            <td><strong>${f[6] || 0}</strong></td>
-            <td>S/ ${Number(f[7] || 0).toFixed(2)}</td>
+            <td><strong>${stockActual}</strong></td>
+            <td>S/ ${valorTotalActual.toFixed(2)}</td>
             <td><span class="badge ${f[8] === 'Agotado' ? 'bg-danger' : f[8] === 'Por Agotarse' ? 'bg-warning text-dark' : 'bg-success'}">${f[8] || ''}</span></td>
-            <td>${f[9] || 0}</td>
-            <td>S/ ${Number(f[10] || 0).toFixed(2)}</td>
-            <td>S/ ${Number(f[11] || 0).toFixed(2)}</td>
+            <td>${stockInicial}</td>
+            <td>S/ ${precioCosto.toFixed(2)}</td>
+            <td>S/ ${valorTotalStock.toFixed(2)}</td>
             <td><span class="badge ${f[12] === 'Inactivo' ? 'bg-secondary' : 'bg-primary'}">${f[12] || ''}</span></td>
             <td class="text-center">
               <button class="btn btn-sm btn-outline-warning me-1" onclick="cargarFilaEnFormulario(${numFila})">✏️ Editar</button>
@@ -191,7 +206,7 @@
 
   // Cargar datos de la fila seleccionada en el formulario para editar
   function cargarFilaEnFormulario(rowIndex) {
-    const f = datosActuales[rowIndex - 1]; // Ajuste por base 0 de JS
+    const f = datosActuales[rowIndex - 1]; 
     if (!f) return;
 
     document.getElementById("rowIndex").value = rowIndex;
@@ -201,13 +216,13 @@
     document.getElementById("lote").value = f[3] || "";
     document.getElementById("fechaVencimiento").value = f[4] || "";
     document.getElementById("unidad").value = f[5] || "";
-    document.getElementById("stockActual").value = f[6] || 0;
+    document.getElementById("stockActual").value = limpiarNumero(f[6]);
     document.getElementById("estadoActual").value = f[8] || "Disponible";
-    document.getElementById("stockInicial").value = f[9] || 0;
-    document.getElementById("precioCosto").value = f[10] || 0;
+    document.getElementById("stockInicial").value = limpiarNumero(f[9]);
+    document.getElementById("precioCosto").value = limpiarNumero(f[10]);
     document.getElementById("estado").value = f[12] || "Activo";
 
-    // Cambiar apariencia del formulario a "Modo Edición"
+    // Cambiar apariencia a Modo Edición
     document.getElementById("cardFormulario").classList.add("editing-mode");
     document.getElementById("tituloFormulario").innerText = `✏️ Editando producto en Fila ${rowIndex}`;
     document.getElementById("badgeModo").classList.remove("d-none");
@@ -230,9 +245,9 @@
       lote: document.getElementById("lote").value,
       fechaVencimiento: document.getElementById("fechaVencimiento").value,
       unidad: document.getElementById("unidad").value,
-      stockInicial: document.getElementById("stockInicial").value,
-      stockActual: document.getElementById("stockActual").value,
-      precioCosto: document.getElementById("precioCosto").value,
+      stockInicial: parseFloat(document.getElementById("stockInicial").value) || 0,
+      stockActual: parseFloat(document.getElementById("stockActual").value) || 0,
+      precioCosto: parseFloat(document.getElementById("precioCosto").value) || 0,
       estadoActual: document.getElementById("estadoActual").value,
       estado: document.getElementById("estado").value,
       rowIndex: document.getElementById("rowIndex").value
