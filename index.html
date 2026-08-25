@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Agregar Registro a Google Sheets</title>
+    <title>Gestión de Inventario - Google Sheets</title>
     <style>
         :root {
             --primary: #0f766e;
@@ -18,88 +18,86 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: var(--bg);
             color: var(--text);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
             margin: 0;
             padding: 20px;
         }
 
-        .card {
-            background-color: var(--card-bg);
-            padding: 2rem;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            width: 100%;
-            max-width: 500px;
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
         }
 
-        h2 {
-            margin-top: 0;
+        .card {
+            background-color: var(--card-bg);
+            padding: 1.5rem 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+
+        h2, h3 {
             color: var(--primary);
-            font-size: 1.5rem;
-            margin-bottom: 1.5rem;
-            text-align: center;
+            margin-top: 0;
+        }
+
+        .row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 1rem;
         }
 
         .form-group {
-            margin-bottom: 1rem;
+            flex: 1;
         }
 
         label {
             display: block;
-            font-size: 0.875rem;
+            font-size: 0.85rem;
             font-weight: 600;
             margin-bottom: 0.25rem;
         }
 
-        input, select {
+        input {
             width: 100%;
-            padding: 0.6rem;
+            padding: 0.55rem;
             border: 1px solid var(--border);
             border-radius: 6px;
             font-size: 0.9rem;
             box-sizing: border-box;
         }
 
-        input:focus, select:focus {
+        input:focus {
             outline: none;
             border-color: var(--primary);
-            box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.2);
         }
 
-        .row {
+        .btn-group {
             display: flex;
             gap: 10px;
-        }
-
-        .row .form-group {
-            flex: 1;
+            margin-top: 1rem;
         }
 
         .btn {
-            width: 100%;
+            flex: 1;
             background-color: var(--primary);
             color: white;
             border: none;
             padding: 0.75rem;
-            font-size: 1rem;
+            font-size: 0.95rem;
             font-weight: 600;
             border-radius: 6px;
             cursor: pointer;
-            margin-top: 1rem;
             transition: background-color 0.2s;
         }
 
-        .btn:hover {
-            background-color: var(--primary-hover);
+        .btn:hover { background-color: var(--primary-hover); }
+
+        .btn-cancel {
+            background-color: #64748b;
+            display: none;
         }
 
-        .btn:disabled {
-            background-color: #94a3b8;
-            cursor: not-allowed;
-        }
+        .btn-cancel:hover { background-color: #475569; }
 
         .status {
             margin-top: 1rem;
@@ -110,142 +108,266 @@
             text-align: center;
         }
 
-        .status.success {
-            background-color: #dcfce7;
-            color: #166534;
-            display: block;
+        .status.success { background-color: #dcfce7; color: #166534; display: block; }
+        .status.error { background-color: #fee2e2; color: #991b1b; display: block; }
+
+        /* Estilos de la tabla de inventario */
+        .table-container {
+            overflow-x: auto;
         }
 
-        .status.error {
-            background-color: #fee2e2;
-            color: #991b1b;
-            display: block;
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            text-align: left;
         }
+
+        th, td {
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+        }
+
+        th {
+            background-color: #f1f5f9;
+            color: var(--primary);
+            font-weight: 700;
+        }
+
+        tr:hover {
+            background-color: #f8fafc;
+        }
+
+        .btn-edit {
+            background-color: #0284c7;
+            color: white;
+            border: none;
+            padding: 4px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .btn-edit:hover { background-color: #0369a1; }
     </style>
 </head>
 <body>
 
-<div class="card">
-    <h2>Nuevo Registro de Inventario</h2>
+<div class="container">
+    
+    <!-- Formulario para agregar / editar -->
+    <div class="card">
+        <h2 id="formTitle">Agregar Registro de Inventario</h2>
+        
+        <form id="sheetForm">
+            <!-- Campo oculto para saber qué fila estamos editando -->
+            <input type="hidden" id="rowIndex" value="">
 
-    <form id="sheetForm">
-        <div class="row">
-            <div class="form-group">
-                <label for="id">ID</label>
-                <input type="text" id="id" placeholder="Ej: RES-002" required>
+            <div class="row">
+                <div class="form-group">
+                    <label for="id">ID</label>
+                    <input type="text" id="id" required>
+                </div>
+                <div class="form-group">
+                    <label for="producto">Producto</label>
+                    <input type="text" id="producto" required>
+                </div>
+                <div class="form-group">
+                    <label for="categoria">Categoría</label>
+                    <input type="text" id="categoria" required>
+                </div>
             </div>
-            <div class="form-group">
-                <label for="producto">Producto</label>
-                <input type="text" id="producto" placeholder="Nombre del producto" required>
+
+            <div class="row">
+                <div class="form-group">
+                    <label for="stockActual">Stock Actual</label>
+                    <input type="number" id="stockActual" min="0" required>
+                </div>
+                <div class="form-group">
+                    <label for="stockMinimo">Stock Mínimo</label>
+                    <input type="number" id="stockMinimo" min="0" required>
+                </div>
+                <div class="form-group">
+                    <label for="ubicacion">Ubicación</label>
+                    <input type="text" id="ubicacion" required>
+                </div>
             </div>
+
+            <div class="row">
+                <div class="form-group">
+                    <label for="caducidad">Caducidad</label>
+                    <input type="text" id="caducidad" placeholder="AAAA-MM-DD" required>
+                </div>
+                <div class="form-group">
+                    <label for="lote">Lote</label>
+                    <input type="text" id="lote" required>
+                </div>
+                <div class="form-group">
+                    <label for="proveedor">Proveedor</label>
+                    <input type="text" id="proveedor" required>
+                </div>
+                <div class="form-group">
+                    <label for="costo">Costo</label>
+                    <input type="number" id="costo" step="0.01" min="0" required>
+                </div>
+            </div>
+
+            <div class="btn-group">
+                <button type="submit" class="btn" id="submitBtn">Guardar en Google Sheets</button>
+                <button type="button" class="btn btn-cancel" id="cancelBtn" onclick="resetForm()">Cancelar Edición</button>
+            </div>
+        </form>
+
+        <div id="statusMessage" class="status"></div>
+    </div>
+
+    <!-- Tabla del inventario abajo -->
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3>Inventario Actualizado</h3>
+            <button class="btn" style="width: auto; padding: 0.4rem 1rem;" onclick="cargarInventario()">🔄 Actualizar Tabla</button>
         </div>
 
-        <div class="row">
-            <div class="form-group">
-                <label for="categoria">Categoría</label>
-                <input type="text" id="categoria" placeholder="Ej: Consumibles" required>
-            </div>
-            <div class="form-group">
-                <label for="ubicacion">Ubicación</label>
-                <input type="text" id="ubicacion" placeholder="Ej: Box 1" required>
-            </div>
+        <div class="table-container">
+            <table id="inventoryTable">
+                <thead>
+                    <tr id="tableHeader"></tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr><td colspan="12">Cargando datos...</td></tr>
+                </tbody>
+            </table>
         </div>
+    </div>
 
-        <div class="row">
-            <div class="form-group">
-                <label for="stockActual">Stock Actual</label>
-                <input type="number" id="stockActual" min="0" required>
-            </div>
-            <div class="form-group">
-                <label for="stockMinimo">Stock Mínimo</label>
-                <input type="number" id="stockMinimo" min="0" required>
-            </div>
-        </div>
-
-        <div class="row">
-            <div class="form-group">
-                <label for="caducidad">Caducidad</label>
-                <input type="date" id="caducidad" required>
-            </div>
-            <div class="form-group">
-                <label for="lote">Lote</label>
-                <input type="text" id="lote" placeholder="Ej: LOTE-123" required>
-            </div>
-        </div>
-
-        <div class="row">
-            <div class="form-group">
-                <label for="proveedor">Proveedor</label>
-                <input type="text" id="proveedor" placeholder="Nombre proveedor" required>
-            </div>
-            <div class="form-group">
-                <label for="costo">Costo</label>
-                <input type="number" id="costo" step="0.01" min="0" required>
-            </div>
-        </div>
-
-        <button type="submit" class="btn" id="submitBtn">Enviar a Google Sheets</button>
-    </form>
-
-    <div id="statusMessage" class="status"></div>
 </div>
 
 <script>
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby-9rfXyVg-qOrQes41v9JfeEgFdetZAUWjq5fDfmNW8jxOEr7sz6q1NxySrNHNvGcs/exec";
+
     const form = document.getElementById('sheetForm');
     const submitBtn = document.getElementById('submitBtn');
+    const cancelBtn = document.getElementById('cancelBtn');
+    const formTitle = document.getElementById('formTitle');
     const statusMessage = document.getElementById('statusMessage');
+    
+    let inventarioData = [];
 
-    // URL de tu Web App de Google Apps Script
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby6PHMMGxqy2wpTZe5e4RZdr7uHZFRfNEYeTtZMVnJMQX8vKC7gwosTH4t8sbiWln9i/exec";
+    // Cargar inventario al abrir la página
+    window.addEventListener('DOMContentLoaded', cargarInventario);
 
+    // Obtener y renderizar inventario
+    async function cargarInventario() {
+        try {
+            const res = await fetch(SCRIPT_URL);
+            inventarioData = await res.json();
+            
+            const headerRow = document.getElementById('tableHeader');
+            const tableBody = document.getElementById('tableBody');
+
+            headerRow.innerHTML = '';
+            tableBody.innerHTML = '';
+
+            if (inventarioData.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="12">No hay datos.</td></tr>';
+                return;
+            }
+
+            // Encabezados
+            inventarioData[0].forEach(col => {
+                headerRow.innerHTML += `<th>${col}</th>`;
+            });
+            headerRow.innerHTML += `<th>Acción</th>`;
+
+            // Filas
+            for (let i = 1; i < inventarioData.length; i++) {
+                const row = inventarioData[i];
+                let rowHtml = '<tr>';
+                row.forEach(cell => {
+                    rowHtml += `<td>${cell}</td>`;
+                });
+                // Botón editar con el índice de fila real de Excel (i + 1)
+                rowHtml += `<td><button class="btn-edit" onclick="prepararEdicion(${i + 1})">✏️ Editar</button></td>`;
+                rowHtml += '</tr>';
+                tableBody.innerHTML += rowHtml;
+            }
+        } catch (error) {
+            console.error("Error al cargar datos:", error);
+        }
+    }
+
+    // Cargar datos de la fila en el formulario para editar
+    function prepararEdicion(rowIndex) {
+        // En inventarioData la fila 1 equivale al índice 0 (encabezado)
+        const rowData = inventarioData[rowIndex - 1];
+
+        document.getElementById('rowIndex').value = rowIndex;
+        document.getElementById('id').value = rowData[0] || '';
+        document.getElementById('producto').value = rowData[1] || '';
+        document.getElementById('categoria').value = rowData[2] || '';
+        document.getElementById('stockActual').value = rowData[3] || 0;
+        document.getElementById('stockMinimo').value = rowData[4] || 0;
+        document.getElementById('ubicacion').value = rowData[5] || '';
+        document.getElementById('caducidad').value = rowData[6] || '';
+        document.getElementById('lote').value = rowData[7] || '';
+        document.getElementById('proveedor').value = rowData[8] || '';
+        document.getElementById('costo').value = rowData[9] || 0;
+
+        // Cambiar título e interfaz
+        formTitle.textContent = `Editando Fila #${rowIndex} (ID: ${rowData[0]})`;
+        submitBtn.textContent = 'Guardar Cambios';
+        cancelBtn.style.display = 'inline-block';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // Limpiar formulario y restablecer botones
+    function resetForm() {
+        form.reset();
+        document.getElementById('rowIndex').value = '';
+        formTitle.textContent = 'Agregar Registro de Inventario';
+        submitBtn.textContent = 'Guardar en Google Sheets';
+        cancelBtn.style.display = 'none';
+    }
+
+    // Enviar datos (Guardar / Actualizar)
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
 
-        // Construir la estructura del payload que tu backend procesa
         const payload = {
-            repository: { name: document.getElementById('producto').value },
-            ref: document.getElementById('categoria').value,
-            pusher: { name: document.getElementById('stockActual').value },
-            head_commit: {
-                message: document.getElementById('stockMinimo').value,
-                url: document.getElementById('ubicacion').value
-            },
-            // Datos directos
-            customData: {
-                id: document.getElementById('id').value,
-                caducidad: document.getElementById('caducidad').value,
-                lote: document.getElementById('lote').value,
-                proveedor: document.getElementById('proveedor').value,
-                costo: document.getElementById('costo').value
-            }
+            rowIndex: document.getElementById('rowIndex').value ? parseInt(document.getElementById('rowIndex').value) : null,
+            id: document.getElementById('id').value,
+            producto: document.getElementById('producto').value,
+            categoria: document.getElementById('categoria').value,
+            stockActual: document.getElementById('stockActual').value,
+            stockMinimo: document.getElementById('stockMinimo').value,
+            ubicacion: document.getElementById('ubicacion').value,
+            caducidad: document.getElementById('caducidad').value,
+            lote: document.getElementById('lote').value,
+            proveedor: document.getElementById('proveedor').value,
+            costo: document.getElementById('costo').value
         };
 
         submitBtn.disabled = true;
-        submitBtn.textContent = 'Enviando...';
-        statusMessage.className = 'status';
-        statusMessage.textContent = '';
+        submitBtn.textContent = 'Procesando...';
 
         try {
-            // Se utiliza mode: 'no-cors' para evitar bloqueos CORS con Apps Script Web Apps
             await fetch(SCRIPT_URL, {
                 method: 'POST',
                 mode: 'no-cors',
-                headers: {
-                    'Content-Type': 'text/plain;charset=utf-8'
-                },
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                 body: JSON.stringify(payload)
             });
 
             statusMessage.className = 'status success';
-            statusMessage.textContent = '¡Registro agregado correctamente en la Hoja de Cálculo!';
-            form.reset();
+            statusMessage.textContent = '¡Información actualizada con éxito!';
+            resetForm();
+            setTimeout(cargarInventario, 1500); // Recargar tabla
         } catch (error) {
             statusMessage.className = 'status error';
-            statusMessage.textContent = 'Error al enviar los datos. Revisa la consola.';
-            console.error('Error:', error);
+            statusMessage.textContent = 'Ocurrió un error al enviar.';
         } finally {
             submitBtn.disabled = false;
-            submitBtn.textContent = 'Enviar a Google Sheets';
         }
     });
 </script>
