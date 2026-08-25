@@ -3,21 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Actualizador de Excel</title>
+    <title>Agregar Registro a Google Sheets</title>
     <style>
         :root {
-            --primary-color: #0f766e;
+            --primary: #0f766e;
             --primary-hover: #115e59;
-            --bg-color: #f8fafc;
+            --bg: #f8fafc;
             --card-bg: #ffffff;
-            --text-color: #1e293b;
-            --border-color: #cbd5e1;
+            --text: #1e293b;
+            --border: #cbd5e1;
         }
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
+            background-color: var(--bg);
+            color: var(--text);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -28,64 +28,67 @@
 
         .card {
             background-color: var(--card-bg);
-            padding: 2.5rem;
+            padding: 2rem;
             border-radius: 12px;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
             width: 100%;
-            max-width: 480px;
+            max-width: 500px;
         }
 
         h2 {
             margin-top: 0;
-            color: var(--primary-color);
+            color: var(--primary);
             font-size: 1.5rem;
-            margin-bottom: 0.5rem;
-        }
-
-        p {
-            color: #64748b;
-            font-size: 0.9rem;
             margin-bottom: 1.5rem;
-        }
-
-        .drop-zone {
-            border: 2px dashed var(--border-color);
-            border-radius: 8px;
-            padding: 2rem;
             text-align: center;
-            background-color: #f1f5f9;
-            cursor: pointer;
-            transition: border-color 0.2s, background-color 0.2s;
         }
 
-        .drop-zone:hover {
-            border-color: var(--primary-color);
-            background-color: #f0fdf4;
+        .form-group {
+            margin-bottom: 1rem;
         }
 
-        .drop-zone input[type="file"] {
-            display: none;
-        }
-
-        .file-info {
-            margin-top: 1rem;
+        label {
+            display: block;
             font-size: 0.875rem;
             font-weight: 600;
-            color: var(--primary-color);
-            word-break: break-all;
+            margin-bottom: 0.25rem;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 0.6rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.9rem;
+            box-sizing: border-box;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.2);
+        }
+
+        .row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .row .form-group {
+            flex: 1;
         }
 
         .btn {
             width: 100%;
-            background-color: var(--primary-color);
+            background-color: var(--primary);
             color: white;
             border: none;
-            padding: 0.75rem 1rem;
+            padding: 0.75rem;
             font-size: 1rem;
             font-weight: 600;
             border-radius: 6px;
             cursor: pointer;
-            margin-top: 1.5rem;
+            margin-top: 1rem;
             transition: background-color 0.2s;
         }
 
@@ -104,6 +107,7 @@
             border-radius: 6px;
             font-size: 0.875rem;
             display: none;
+            text-align: center;
         }
 
         .status.success {
@@ -122,91 +126,126 @@
 <body>
 
 <div class="card">
-    <h2>Procesar Archivo Excel</h2>
-    <p>Sube tu archivo de Excel para procesar los datos y descargar la versión actualizada.</p>
+    <h2>Nuevo Registro de Inventario</h2>
 
-    <form id="uploadForm">
-        <div class="drop-zone" onclick="document.getElementById('excelFile').click()">
-            <span id="dropZoneText">📁 Haz clic aquí o arrastra tu archivo Excel (.xlsx)</span>
-            <input type="file" id="excelFile" name="file" accept=".xlsx, .xls" required>
-            <div id="fileInfo" class="file-info"></div>
+    <form id="sheetForm">
+        <div class="row">
+            <div class="form-group">
+                <label for="id">ID</label>
+                <input type="text" id="id" placeholder="Ej: RES-002" required>
+            </div>
+            <div class="form-group">
+                <label for="producto">Producto</label>
+                <input type="text" id="producto" placeholder="Nombre del producto" required>
+            </div>
         </div>
 
-        <button type="submit" class="btn" id="submitBtn">Procesar y Descargar</button>
+        <div class="row">
+            <div class="form-group">
+                <label for="categoria">Categoría</label>
+                <input type="text" id="categoria" placeholder="Ej: Consumibles" required>
+            </div>
+            <div class="form-group">
+                <label for="ubicacion">Ubicación</label>
+                <input type="text" id="ubicacion" placeholder="Ej: Box 1" required>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="form-group">
+                <label for="stockActual">Stock Actual</label>
+                <input type="number" id="stockActual" min="0" required>
+            </div>
+            <div class="form-group">
+                <label for="stockMinimo">Stock Mínimo</label>
+                <input type="number" id="stockMinimo" min="0" required>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="form-group">
+                <label for="caducidad">Caducidad</label>
+                <input type="date" id="caducidad" required>
+            </div>
+            <div class="form-group">
+                <label for="lote">Lote</label>
+                <input type="text" id="lote" placeholder="Ej: LOTE-123" required>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="form-group">
+                <label for="proveedor">Proveedor</label>
+                <input type="text" id="proveedor" placeholder="Nombre proveedor" required>
+            </div>
+            <div class="form-group">
+                <label for="costo">Costo</label>
+                <input type="number" id="costo" step="0.01" min="0" required>
+            </div>
+        </div>
+
+        <button type="submit" class="btn" id="submitBtn">Enviar a Google Sheets</button>
     </form>
 
     <div id="statusMessage" class="status"></div>
 </div>
 
 <script>
-    const fileInput = document.getElementById('excelFile');
-    const fileInfo = document.getElementById('fileInfo');
-    const form = document.getElementById('uploadForm');
+    const form = document.getElementById('sheetForm');
     const submitBtn = document.getElementById('submitBtn');
     const statusMessage = document.getElementById('statusMessage');
 
-    // Mostrar el nombre del archivo seleccionado
-    fileInput.addEventListener('change', () => {
-        if (fileInput.files.length > 0) {
-            fileInfo.textContent = `Archivo seleccionado: ${fileInput.files[0].name}`;
-        } else {
-            fileInfo.textContent = '';
-        }
-    });
+    // URL de tu Web App de Google Apps Script
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby-9rfXyVg-qOrQes41v9JfeEgFdetZAUWjq5fDfmNW8jxOEr7sz6q1NxySrNHNvGcs/exec";
 
-    // Manejar el envío del formulario y la descarga
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
 
-        if (fileInput.files.length === 0) return;
+        // Construir la estructura del payload que tu backend procesa
+        const payload = {
+            repository: { name: document.getElementById('producto').value },
+            ref: document.getElementById('categoria').value,
+            pusher: { name: document.getElementById('stockActual').value },
+            head_commit: {
+                message: document.getElementById('stockMinimo').value,
+                url: document.getElementById('ubicacion').value
+            },
+            // Datos directos
+            customData: {
+                id: document.getElementById('id').value,
+                caducidad: document.getElementById('caducidad').value,
+                lote: document.getElementById('lote').value,
+                proveedor: document.getElementById('proveedor').value,
+                costo: document.getElementById('costo').value
+            }
+        };
 
-        const formData = new FormData();
-        formData.append('file', fileInput.files[0]);
-
-        // Feedback visual de carga
         submitBtn.disabled = true;
-        submitBtn.textContent = 'Procesando archivo...';
+        submitBtn.textContent = 'Enviando...';
         statusMessage.className = 'status';
         statusMessage.textContent = '';
 
         try {
-            // Reemplaza '/api/procesar-excel' por la URL de tu endpoint backend (ej: Python/Flask, FastAPI, Node.js)
-            const response = await fetch('/api/procesar-excel', {
+            // Se utiliza mode: 'no-cors' para evitar bloqueos CORS con Apps Script Web Apps
+            await fetch(SCRIPT_URL, {
                 method: 'POST',
-                body: formData
+                mode: 'no-cors',
+                headers: {
+                    'Content-Type': 'text/plain;charset=utf-8'
+                },
+                body: JSON.stringify(payload)
             });
 
-            if (!response.ok) {
-                throw new Error('Ocurrió un error al procesar el archivo en el servidor.');
-            }
-
-            // Recibir el archivo binario descargable (Blob)
-            const blob = await response.blob();
-            const downloadUrl = window.URL.createObjectURL(blob);
-            
-            // Crear un enlace temporal para forzar la descarga del navegador
-            const a = document.createElement('a');
-            a.href = downloadUrl;
-            
-            // Nombre del archivo editado al descargar
-            const originalName = fileInput.files[0].name.replace(/\.[^/.]+$/, "");
-            a.download = `${originalName}_editado.xlsx`;
-            
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            
-            // Liberar objeto URL de la memoria
-            window.URL.revokeObjectURL(downloadUrl);
-
             statusMessage.className = 'status success';
-            statusMessage.textContent = '¡Archivo procesado y descargado con éxito!';
+            statusMessage.textContent = '¡Registro agregado correctamente en la Hoja de Cálculo!';
+            form.reset();
         } catch (error) {
             statusMessage.className = 'status error';
-            statusMessage.textContent = error.message;
+            statusMessage.textContent = 'Error al enviar los datos. Revisa la consola.';
+            console.error('Error:', error);
         } finally {
             submitBtn.disabled = false;
-            submitBtn.textContent = 'Procesar y Descargar';
+            submitBtn.textContent = 'Enviar a Google Sheets';
         }
     });
 </script>
