@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control Total de Inventario</title>
+    <title>Gestión de Inventario (Local)</title>
     <style>
         :root {
             --primary: #0f766e;
@@ -43,9 +43,13 @@
             display: flex;
             gap: 15px;
             margin-bottom: 1rem;
+            flex-wrap: wrap;
         }
 
-        .form-group { flex: 1; }
+        .form-group { 
+            flex: 1; 
+            min-width: 180px;
+        }
 
         label {
             display: block;
@@ -89,17 +93,27 @@
 
         .btn-cancel:hover { background-color: #475569; }
 
-        .status {
-            margin-top: 1rem;
-            padding: 0.75rem;
+        .btn-export {
+            background-color: #16a34a;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
             border-radius: 6px;
-            font-size: 0.875rem;
-            display: none;
-            text-align: center;
+            font-weight: 600;
+            cursor: pointer;
         }
+        .btn-export:hover { background-color: #15803d; }
 
-        .status.success { background-color: #dcfce7; color: #166534; display: block; }
-        .status.error { background-color: #fee2e2; color: #991b1b; display: block; }
+        .btn-clear-all {
+            background-color: #6b7280;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-clear-all:hover { background-color: #4b5563; }
 
         .table-container { overflow-x: auto; }
 
@@ -124,7 +138,7 @@
             background-color: #0284c7;
             color: white;
             border: none;
-            padding: 4px 8px;
+            padding: 5px 10px;
             border-radius: 4px;
             cursor: pointer;
             font-weight: 600;
@@ -137,7 +151,7 @@
             background-color: var(--danger);
             color: white;
             border: none;
-            padding: 4px 8px;
+            padding: 5px 10px;
             border-radius: 4px;
             cursor: pointer;
             font-weight: 600;
@@ -150,16 +164,17 @@
 
 <div class="container">
     
-    <!-- Formulario Agregar/Editar -->
+    <!-- Formulario Agregar / Editar -->
     <div class="card">
         <h2 id="formTitle">Agregar / Editar Registro</h2>
         
-        <form id="sheetForm">
-            <input type="hidden" id="rowIndex" value="">
+        <form id="inventoryForm">
+            <!-- Guarda la posición de la fila a editar (-1 si es nuevo) -->
+            <input type="hidden" id="editIndex" value="-1">
 
             <div class="row">
                 <div class="form-group">
-                    <label for="id">ID</label>
+                    <label for="id">ID / Código</label>
                     <input type="text" id="id" required>
                 </div>
                 <div class="form-group">
@@ -201,34 +216,48 @@
                     <input type="text" id="proveedor" required>
                 </div>
                 <div class="form-group">
-                    <label for="costo">Costo</label>
+                    <label for="costo">Costo ($/S/.)</label>
                     <input type="number" id="costo" step="0.01" min="0" required>
                 </div>
             </div>
 
             <div class="btn-group">
-                <button type="submit" class="btn" id="submitBtn">Guardar en Google Sheets</button>
+                <button type="submit" class="btn" id="submitBtn">➕ Agregar Registro</button>
                 <button type="button" class="btn btn-cancel" id="cancelBtn" onclick="resetForm()">Cancelar Edición</button>
             </div>
         </form>
-
-        <div id="statusMessage" class="status"></div>
     </div>
 
-    <!-- Tabla del Inventario con opciones para Editar y Borrar -->
+    <!-- Tabla del Inventario Local -->
     <div class="card">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-            <h3>Inventario de Google Sheets</h3>
-            <button class="btn" style="width: auto; padding: 0.4rem 1rem;" onclick="cargarInventario()">🔄 Actualizar Tabla</button>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 10px;">
+            <h3>Tabla de Inventario</h3>
+            <div>
+                <button class="btn-export" onclick="exportarCSV()">📥 Descargar en Excel (CSV)</button>
+                <button class="btn-clear-all" onclick="vaciarTodo()">🗑️ Vaciar Todo</button>
+            </div>
         </div>
 
         <div class="table-container">
             <table>
                 <thead>
-                    <tr id="tableHeader"></tr>
+                    <tr>
+                        <th>ID</th>
+                        <th>Producto</th>
+                        <th>Categoría</th>
+                        <th>Stock Act.</th>
+                        <th>Stock Mín.</th>
+                        <th>Ubicación</th>
+                        <th>Caducidad</th>
+                        <th>Lote</th>
+                        <th>Proveedor</th>
+                        <th>Costo</th>
+                        <th>Fecha Registro</th>
+                        <th>Acciones</th>
+                    </tr>
                 </thead>
                 <tbody id="tableBody">
-                    <tr><td colspan="12">Cargando inventario...</td></tr>
+                    <!-- Las filas se cargan dinámicamente aquí -->
                 </tbody>
             </table>
         </div>
@@ -237,129 +266,59 @@
 </div>
 
 <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby-9rfXyVg-qOrQes41v9JfeEgFdetZAUWjq5fDfmNW8jxOEr7sz6q1NxySrNHNvGcs/exec";
-
-    const form = document.getElementById('sheetForm');
+    const form = document.getElementById('inventoryForm');
+    const editIndexInput = document.getElementById('editIndex');
+    const formTitle = document.getElementById('formTitle');
     const submitBtn = document.getElementById('submitBtn');
     const cancelBtn = document.getElementById('cancelBtn');
-    const formTitle = document.getElementById('formTitle');
-    const statusMessage = document.getElementById('statusMessage');
-    
-    let inventarioData = [];
+    const tableBody = document.getElementById('tableBody');
 
-    window.addEventListener('DOMContentLoaded', cargarInventario);
+    // Cargar inventario guardado en el navegador o iniciar vacío
+    let inventario = JSON.parse(localStorage.getItem('inventarioData')) || [];
 
-    // Obtener y cargar la tabla desde Google Sheets
-    async function cargarInventario() {
-        try {
-            const res = await fetch(SCRIPT_URL);
-            inventarioData = await res.json();
-            
-            const headerRow = document.getElementById('tableHeader');
-            const tableBody = document.getElementById('tableBody');
+    // Inicializar la tabla al cargar la página
+    window.addEventListener('DOMContentLoaded', renderTabla);
 
-            headerRow.innerHTML = '';
-            tableBody.innerHTML = '';
+    // Renderizar la tabla con los elementos actuales
+    function renderTabla() {
+        tableBody.innerHTML = '';
 
-            if (inventarioData.length <= 1) {
-                tableBody.innerHTML = '<tr><td colspan="12">La hoja está vacía o solo contiene encabezados.</td></tr>';
-                return;
-            }
-
-            // Encabezados
-            inventarioData[0].forEach(col => {
-                headerRow.innerHTML += `<th>${col}</th>`;
-            });
-            headerRow.innerHTML += `<th>Acciones</th>`;
-
-            // Filas de datos
-            for (let i = 1; i < inventarioData.length; i++) {
-                const row = inventarioData[i];
-                const realRowIndex = i + 1; // Índice real de fila en Google Sheets
-                
-                let rowHtml = '<tr>';
-                row.forEach(cell => {
-                    rowHtml += `<td>${cell}</td>`;
-                });
-                
-                // Botones Editar y Borrar
-                rowHtml += `<td>
-                    <button class="btn-edit" onclick="prepararEdicion(${realRowIndex})">✏️ Editar</button>
-                    <button class="btn-delete" onclick="eliminarFila(${realRowIndex}, '${row[1]}')">🗑️ Borrar</button>
-                </td>`;
-                rowHtml += '</tr>';
-                
-                tableBody.innerHTML += rowHtml;
-            }
-        } catch (error) {
-            console.error("Error al cargar inventario:", error);
-        }
-    }
-
-    // Cargar datos en el formulario para editar una fila
-    function prepararEdicion(rowIndex) {
-        const rowData = inventarioData[rowIndex - 1];
-
-        document.getElementById('rowIndex').value = rowIndex;
-        document.getElementById('id').value = rowData[0] || '';
-        document.getElementById('producto').value = rowData[1] || '';
-        document.getElementById('categoria').value = rowData[2] || '';
-        document.getElementById('stockActual').value = rowData[3] || 0;
-        document.getElementById('stockMinimo').value = rowData[4] || 0;
-        document.getElementById('ubicacion').value = rowData[5] || '';
-        document.getElementById('caducidad').value = rowData[6] || '';
-        document.getElementById('lote').value = rowData[7] || '';
-        document.getElementById('proveedor').value = rowData[8] || '';
-        document.getElementById('costo').value = rowData[9] || 0;
-
-        formTitle.textContent = `Editando Fila #${rowIndex}`;
-        submitBtn.textContent = 'Guardar Cambios';
-        cancelBtn.style.display = 'inline-block';
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-
-    // Función para Borrar una fila elegida
-    async function eliminarFila(rowIndex, nombreProducto) {
-        if (!confirm(`¿Estás seguro de que deseas eliminar el producto "${nombreProducto}" (Fila ${rowIndex})?`)) {
+        if (inventario.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="12" style="text-align:center; color: #64748b;">No hay registros cargados en el inventario.</td></tr>';
             return;
         }
 
-        try {
-            await fetch(SCRIPT_URL, {
-                method: 'POST',
-                mode: 'no-cors',
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: JSON.stringify({
-                    action: "delete",
-                    rowIndex: rowIndex
-                })
-            });
-
-            statusMessage.className = 'status success';
-            statusMessage.textContent = `Fila ${rowIndex} eliminada con éxito.`;
-            setTimeout(cargarInventario, 1500);
-        } catch (error) {
-            statusMessage.className = 'status error';
-            statusMessage.textContent = 'Error al intentar eliminar la fila.';
-        }
+        inventario.forEach((item, index) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${item.id}</td>
+                <td><strong>${item.producto}</strong></td>
+                <td>${item.categoria}</td>
+                <td>${item.stockActual}</td>
+                <td>${item.stockMinimo}</td>
+                <td>${item.ubicacion}</td>
+                <td>${item.caducidad}</td>
+                <td>${item.lote}</td>
+                <td>${item.proveedor}</td>
+                <td>S/. ${parseFloat(item.costo).toFixed(2)}</td>
+                <td><small>${item.fechaRegistro}</small></td>
+                <td>
+                    <button class="btn-edit" onclick="prepararEdicion(${index})">✏️ Editar</button>
+                    <button class="btn-delete" onclick="eliminarFila(${index})">🗑️ Borrar</button>
+                </td>
+            `;
+            tableBody.appendChild(tr);
+        });
     }
 
-    function resetForm() {
-        form.reset();
-        document.getElementById('rowIndex').value = '';
-        formTitle.textContent = 'Agregar / Editar Registro';
-        submitBtn.textContent = 'Guardar en Google Sheets';
-        cancelBtn.style.display = 'none';
-    }
-
-    // Enviar datos (Guardar / Actualizar)
-    form.addEventListener('submit', async (e) => {
+    // Guardar (Agregar o Editar)
+    form.addEventListener('submit', (e) => {
         e.preventDefault();
 
-        const rawRowIndex = document.getElementById('rowIndex').value;
+        const index = parseInt(editIndexInput.value);
+        const fechaActual = new Date().toLocaleString();
 
-        const payload = {
-            rowIndex: rawRowIndex ? parseInt(rawRowIndex) : null,
+        const registro = {
             id: document.getElementById('id').value,
             producto: document.getElementById('producto').value,
             categoria: document.getElementById('categoria').value,
@@ -369,31 +328,114 @@
             caducidad: document.getElementById('caducidad').value,
             lote: document.getElementById('lote').value,
             proveedor: document.getElementById('proveedor').value,
-            costo: document.getElementById('costo').value
+            costo: document.getElementById('costo').value,
+            fechaRegistro: index >= 0 ? inventario[index].fechaRegistro : fechaActual
         };
 
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Procesando...';
-
-        try {
-            await fetch(SCRIPT_URL, {
-                method: 'POST',
-                mode: 'no-cors',
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: JSON.stringify(payload)
-            });
-
-            statusMessage.className = 'status success';
-            statusMessage.textContent = '¡Registro guardado correctamente!';
-            resetForm();
-            setTimeout(cargarInventario, 1500);
-        } catch (error) {
-            statusMessage.className = 'status error';
-            statusMessage.textContent = 'Error al guardar los cambios.';
-        } finally {
-            submitBtn.disabled = false;
+        if (index >= 0) {
+            // Actualizar fila existente
+            inventario[index] = registro;
+        } else {
+            // Agregar nueva fila
+            inventario.push(registro);
         }
+
+        guardarEnLocalStorage();
+        renderTabla();
+        resetForm();
     });
+
+    // Cargar datos en el formulario para editar
+    function prepararEdicion(index) {
+        const item = inventario[index];
+
+        editIndexInput.value = index;
+        document.getElementById('id').value = item.id;
+        document.getElementById('producto').value = item.producto;
+        document.getElementById('categoria').value = item.categoria;
+        document.getElementById('stockActual').value = item.stockActual;
+        document.getElementById('stockMinimo').value = item.stockMinimo;
+        document.getElementById('ubicacion').value = item.ubicacion;
+        document.getElementById('caducidad').value = item.caducidad;
+        document.getElementById('lote').value = item.lote;
+        document.getElementById('proveedor').value = item.proveedor;
+        document.getElementById('costo').value = item.costo;
+
+        formTitle.textContent = `Editando: ${item.producto}`;
+        submitBtn.textContent = '💾 Guardar Cambios';
+        cancelBtn.style.display = 'inline-block';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // Eliminar una fila elegida
+    function eliminarFila(index) {
+        const productoNombre = inventario[index].producto;
+        if (confirm(`¿Estás seguro de que quieres borrar "${productoNombre}"?`)) {
+            inventario.splice(index, 1);
+            guardarEnLocalStorage();
+            renderTabla();
+        }
+    }
+
+    // Vaciar toda la tabla
+    function vaciarTodo() {
+        if (inventario.length === 0) return;
+        if (confirm('⚠️ ¿Quieres eliminar TODOS los registros de la tabla? Esta acción no se puede deshacer.')) {
+            inventario = [];
+            guardarEnLocalStorage();
+            renderTabla();
+        }
+    }
+
+    // Reiniciar formulario
+    function resetForm() {
+        form.reset();
+        editIndexInput.value = '-1';
+        formTitle.textContent = 'Agregar / Editar Registro';
+        submitBtn.textContent = '➕ Agregar Registro';
+        cancelBtn.style.display = 'none';
+    }
+
+    // Guardar los datos en el navegador
+    function guardarEnLocalStorage() {
+        localStorage.setItem('inventarioData', JSON.stringify(inventario));
+    }
+
+    // Exportar la tabla a un archivo CSV (Excel)
+    function exportarCSV() {
+        if (inventario.length === 0) {
+            alert("No hay datos para exportar.");
+            return;
+        }
+
+        let csvContent = "data:text/csv;charset=utf-8,";
+        csvContent += "ID,Producto,Categoria,Stock Actual,Stock Minimo,Ubicacion,Caducidad,Lote,Proveedor,Costo,Fecha Registro\n";
+
+        inventario.forEach(item => {
+            const row = [
+                `"${item.id}"`,
+                `"${item.producto}"`,
+                `"${item.categoria}"`,
+                item.stockActual,
+                item.stockMinimo,
+                `"${item.ubicacion}"`,
+                `"${item.caducidad}"`,
+                `"${item.lote}"`,
+                `"${item.proveedor}"`,
+                item.costo,
+                `"${item.fechaRegistro}"`
+            ];
+            csvContent += row.join(",") + "\n";
+        });
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "inventario.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
 </script>
 
 </body>
