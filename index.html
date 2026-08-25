@@ -6,6 +6,8 @@
   <title>Sistema de Control de Inventario</title>
   <!-- Bootstrap CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Librería SheetJS para Exportar a Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     body { background-color: #f4f6f9; }
     label { font-size: 0.85rem; font-weight: 600; color: #495057; margin-bottom: 4px; }
@@ -17,15 +19,20 @@
 <body class="p-3 p-md-4">
 
 <div class="container-fluid">
-  <!-- Encabezado Principal -->
+  <!-- Encabezado Principal y Botón Descargar -->
   <div class="d-flex justify-content-between align-items-center mb-4">
     <h2 class="h3 fw-bold text-primary mb-0">📦 Control de Inventario</h2>
-    <span class="badge bg-success px-3 py-2">Estado: Conectado</span>
+    <div>
+      <button type="button" class="btn btn-success me-2" onclick="descargarExcel()">
+        📊 Descargar Excel (.xlsx)
+      </button>
+      <span class="badge bg-primary px-3 py-2">Estado: Conectado</span>
+    </div>
   </div>
 
   <!-- Formulario de Entrada de Datos -->
   <div class="card mb-4 shadow-sm border-0">
-    <div class="card-header bg-primary text-white font-weight-bold">
+    <div class="card-header bg-primary text-white fw-bold">
       📝 Formulario de Registro / Edición
     </div>
     <div class="card-body">
@@ -129,24 +136,24 @@
 </div>
 
 <script>
-  // Nueva URL del Web App de Apps Script
   const API_URL = "https://script.google.com/macros/s/AKfycbzGCtFIkX0GQAAlIzolkXP7QgO2sfqcFgetRmKadsF12NBdgXZJu_jzfCkt2J44vQeh/exec";
+  let datosActuales = []; // Almacena los datos descargados para la exportación
 
-  // Función para obtener y mostrar los datos en la tabla
   async function cargarInventario() {
     try {
       const res = await fetch(API_URL);
       const data = await res.json();
-      const tbody = document.getElementById("tablaCuerpo");
       
       if (!Array.isArray(data) || data.length <= 1) {
-        tbody.innerHTML = '<tr><td colspan="14" class="text-center py-4">No hay registros guardados.</td></tr>';
+        document.getElementById("tablaCuerpo").innerHTML = '<tr><td colspan="14" class="text-center py-4">No hay registros guardados.</td></tr>';
+        datosActuales = [];
         return;
       }
 
+      datosActuales = data; // Guardar referencia para descargar en Excel
+      const tbody = document.getElementById("tablaCuerpo");
       tbody.innerHTML = "";
 
-      // Se recorre desde la fila 1 para saltar los encabezados (fila 0)
       for (let i = 1; i < data.length; i++) {
         const f = data[i];
         const numFila = i + 1;
@@ -177,12 +184,26 @@
     }
   }
 
-  // Evento para enviar y guardar datos (Crear / Editar)
+  // Descargar archivo Excel (.xlsx)
+  function descargarExcel() {
+    if (!datosActuales || datosActuales.length === 0) {
+      alert("No hay datos disponibles para exportar.");
+      return;
+    }
+
+    const ws = XLSX.utils.aoa_to_sheet(datosActuales);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Inventario");
+    
+    const fecha = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `Inventario_Dental_${fecha}.xlsx`);
+  }
+
+  // Guardar datos
   document.getElementById("formInventario").addEventListener("submit", async (e) => {
     e.preventDefault();
     const btn = document.getElementById("btnGuardar");
     btn.disabled = true;
-    btn.innerText = "Guardando...";
 
     const payload = {
       codigo: document.getElementById("codigo").value,
@@ -200,47 +221,29 @@
     };
 
     try {
-      await fetch(API_URL, {
-        method: "POST",
-        body: JSON.stringify(payload)
-      });
+      await fetch(API_URL, { method: "POST", body: JSON.stringify(payload) });
       limpiarFormulario();
       await cargarInventario();
     } catch (err) {
-      alert("Error al guardar los datos.");
-      console.error(err);
+      alert("Error al guardar.");
     } finally {
       btn.disabled = false;
-      btn.innerText = "Guardar Registro";
     }
   });
 
-  // Función para eliminar filas
+  // Eliminar filas
   async function eliminarFila(rowIndex) {
-    if (!confirm("¿Estás seguro de que deseas eliminar este registro?")) return;
-    
-    try {
-      await fetch(API_URL, {
-        method: "POST",
-        body: JSON.stringify({ action: "delete", rowIndex: rowIndex })
-      });
-      cargarInventario();
-    } catch (err) {
-      alert("Error al eliminar la fila.");
-      console.error(err);
-    }
+    if (!confirm("¿Deseas eliminar este registro?")) return;
+    await fetch(API_URL, { method: "POST", body: JSON.stringify({ action: "delete", rowIndex: rowIndex }) });
+    cargarInventario();
   }
 
-  // Función para limpiar el formulario
   function limpiarFormulario() {
     document.getElementById("formInventario").reset();
     document.getElementById("rowIndex").value = "";
   }
 
-  // Cargar datos al abrir la página
   cargarInventario();
-
-  // Actualización automática cada 5 segundos para sincronía multiusuario en GitHub Pages
   setInterval(cargarInventario, 5000);
 </script>
 
