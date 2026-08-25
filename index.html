@@ -15,6 +15,7 @@
     .table th { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; white-space: nowrap; }
     .table td { font-size: 0.9rem; vertical-align: middle; white-space: nowrap; }
     .editing-mode { border: 2px solid #ffc107 !important; }
+    .calc-readonly { background-color: #e9ecef; font-weight: bold; }
   </style>
 </head>
 <body class="p-3 p-md-4">
@@ -42,7 +43,7 @@
         <!-- Campo oculto para almacenar el número de fila al editar -->
         <input type="hidden" id="rowIndex" value="">
         
-        <!-- Fila 1 de Campos -->
+        <!-- Fila 1: Datos Generales -->
         <div class="col-md-2">
           <label for="codigo">Código</label>
           <input type="text" id="codigo" class="form-control" placeholder="Ej. RES-001" required>
@@ -64,24 +65,34 @@
           <input type="date" id="fechaVencimiento" class="form-control">
         </div>
 
-        <!-- Fila 2 de Campos -->
+        <!-- Fila 2: Cantidades, Precio y Totales -->
         <div class="col-md-2">
           <label for="unidad">Unidad</label>
           <input type="text" id="unidad" class="form-control" placeholder="Ej. Caja, Frasco">
         </div>
         <div class="col-md-2">
           <label for="stockInicial">Stock Inicial</label>
-          <input type="number" id="stockInicial" class="form-control" placeholder="0" required>
+          <input type="number" id="stockInicial" class="form-control" placeholder="0" min="0" required oninput="calcularTotales()">
         </div>
         <div class="col-md-2">
           <label for="stockActual">Stock Actual</label>
-          <input type="number" id="stockActual" class="form-control" placeholder="0" required>
+          <input type="number" id="stockActual" class="form-control" placeholder="0" min="0" required oninput="calcularTotales()">
         </div>
         <div class="col-md-2">
           <label for="precioCosto">Precio Costo Unit. (S/)</label>
-          <input type="number" step="0.01" id="precioCosto" class="form-control" placeholder="0.00" required>
+          <input type="number" step="0.01" id="precioCosto" class="form-control" placeholder="0.00" min="0" required oninput="calcularTotales()">
         </div>
         <div class="col-md-2">
+          <label for="valorTotalActual">Valor Total Actual (S/)</label>
+          <input type="text" id="valorTotalActual" class="form-control calc-readonly" readonly placeholder="S/ 0.00">
+        </div>
+        <div class="col-md-2">
+          <label for="valorTotalStock">Valor Total Stock (S/)</label>
+          <input type="text" id="valorTotalStock" class="form-control calc-readonly" readonly placeholder="S/ 0.00">
+        </div>
+
+        <!-- Fila 3: Estados -->
+        <div class="col-md-3">
           <label for="estadoActual">Estado Actual</label>
           <select id="estadoActual" class="form-select">
             <option value="Disponible">Disponible</option>
@@ -89,7 +100,7 @@
             <option value="Por Agotarse">Por Agotarse</option>
           </select>
         </div>
-        <div class="col-md-2">
+        <div class="col-md-3">
           <label for="estado">Estado General</label>
           <select id="estado" class="form-select">
             <option value="Activo">Activo</option>
@@ -98,7 +109,7 @@
         </div>
 
         <!-- Botones de Acción -->
-        <div class="col-12 text-end mt-3">
+        <div class="col-md-6 text-end align-self-end">
           <button type="button" class="btn btn-secondary me-2" onclick="limpiarFormulario()">Limpiar / Cancelar</button>
           <button type="submit" id="btnGuardar" class="btn btn-primary px-4">Guardar Registro</button>
         </div>
@@ -106,7 +117,7 @@
     </div>
   </div>
 
-  <!-- Tabla del Inventario (13 Columnas + Acciones) -->
+  <!-- Tabla del Inventario -->
   <div class="table-container p-3 border">
     <div class="table-responsive">
       <table class="table table-striped table-hover align-middle mb-0">
@@ -142,13 +153,34 @@
   const API_URL = "https://script.google.com/macros/s/AKfycbzGCtFIkX0GQAAlIzolkXP7QgO2sfqcFgetRmKadsF12NBdgXZJu_jzfCkt2J44vQeh/exec";
   let datosActuales = []; 
 
-  // Función auxiliar para formatear valores numéricos correctamente
-  function limpiarNumero(val) {
-    if (typeof val === 'string' && val.includes('T') && val.includes('Z')) {
-      return 0; // Si Google Sheets devuelve un ISO String de fecha por error
+  // Función para formatear fechas a YYYY-MM-DD sin errores de zona horaria
+  function formatearFecha(val) {
+    if (!val) return "";
+    if (typeof val === "string" && val.includes("T")) {
+      return val.split("T")[0];
     }
+    return val;
+  }
+
+  // Función auxiliar para parsear números correctamente
+  function parseNumero(val) {
+    if (!val) return 0;
+    if (typeof val === "string" && val.includes("T")) return 0; // Si Google envía una fecha por error
     const num = parseFloat(val);
     return isNaN(num) ? 0 : num;
+  }
+
+  // Función para calcular automáticamente los Valores Totales en el formulario
+  function calcularTotales() {
+    const stockActual = parseNumero(document.getElementById("stockActual").value);
+    const stockInicial = parseNumero(document.getElementById("stockInicial").value);
+    const precioCosto = parseNumero(document.getElementById("precioCosto").value);
+
+    const valorActual = stockActual * precioCosto;
+    const valorStock = stockInicial * precioCosto;
+
+    document.getElementById("valorTotalActual").value = `S/ ${valorActual.toFixed(2)}`;
+    document.getElementById("valorTotalStock").value = `S/ ${valorStock.toFixed(2)}`;
   }
 
   // Cargar inventario desde Google Sheets
@@ -171,11 +203,14 @@
         const f = data[i];
         const numFila = i + 1;
 
-        const stockActual = limpiarNumero(f[6]);
-        const valorTotalActual = limpiarNumero(f[7]);
-        const stockInicial = limpiarNumero(f[9]);
-        const precioCosto = limpiarNumero(f[10]);
-        const valorTotalStock = limpiarNumero(f[11]);
+        const stockActual = parseNumero(f[6]);
+        const precioCosto = parseNumero(f[10]);
+        const stockInicial = parseNumero(f[9]);
+
+        // Recalcular los valores totales de forma segura en pantalla
+        const valorTotalActual = stockActual * precioCosto;
+        const valorTotalStock = stockInicial * precioCosto;
+        const fechaVenc = formatearFecha(f[4]);
 
         tbody.innerHTML += `
           <tr>
@@ -183,15 +218,15 @@
             <td>${f[1] || ''}</td>
             <td>${f[2] || ''}</td>
             <td>${f[3] || ''}</td>
-            <td>${f[4] || ''}</td>
+            <td>${fechaVenc}</td>
             <td>${f[5] || ''}</td>
             <td><strong>${stockActual}</strong></td>
-            <td>S/ ${valorTotalActual.toFixed(2)}</td>
-            <td><span class="badge ${f[8] === 'Agotado' ? 'bg-danger' : f[8] === 'Por Agotarse' ? 'bg-warning text-dark' : 'bg-success'}">${f[8] || ''}</span></td>
+            <td class="text-success fw-bold">S/ ${valorTotalActual.toFixed(2)}</td>
+            <td><span class="badge ${f[8] === 'Agotado' ? 'bg-danger' : f[8] === 'Por Agotarse' ? 'bg-warning text-dark' : 'bg-success'}">${f[8] || 'Disponible'}</span></td>
             <td>${stockInicial}</td>
             <td>S/ ${precioCosto.toFixed(2)}</td>
             <td>S/ ${valorTotalStock.toFixed(2)}</td>
-            <td><span class="badge ${f[12] === 'Inactivo' ? 'bg-secondary' : 'bg-primary'}">${f[12] || ''}</span></td>
+            <td><span class="badge ${f[12] === 'Inactivo' ? 'bg-secondary' : 'bg-primary'}">${f[12] || 'Activo'}</span></td>
             <td class="text-center">
               <button class="btn btn-sm btn-outline-warning me-1" onclick="cargarFilaEnFormulario(${numFila})">✏️ Editar</button>
               <button class="btn btn-sm btn-outline-danger" onclick="eliminarFila(${numFila})">🗑️ Borrar</button>
@@ -204,7 +239,7 @@
     }
   }
 
-  // Cargar datos de la fila seleccionada en el formulario para editar
+  // Cargar los datos de la fila a editar en el formulario
   function cargarFilaEnFormulario(rowIndex) {
     const f = datosActuales[rowIndex - 1]; 
     if (!f) return;
@@ -214,15 +249,17 @@
     document.getElementById("descripcion").value = f[1] || "";
     document.getElementById("categoria").value = f[2] || "";
     document.getElementById("lote").value = f[3] || "";
-    document.getElementById("fechaVencimiento").value = f[4] || "";
+    document.getElementById("fechaVencimiento").value = formatearFecha(f[4]);
     document.getElementById("unidad").value = f[5] || "";
-    document.getElementById("stockActual").value = limpiarNumero(f[6]);
+    document.getElementById("stockActual").value = parseNumero(f[6]);
     document.getElementById("estadoActual").value = f[8] || "Disponible";
-    document.getElementById("stockInicial").value = limpiarNumero(f[9]);
-    document.getElementById("precioCosto").value = limpiarNumero(f[10]);
+    document.getElementById("stockInicial").value = parseNumero(f[9]);
+    document.getElementById("precioCosto").value = parseNumero(f[10]);
     document.getElementById("estado").value = f[12] || "Activo";
 
-    // Cambiar apariencia a Modo Edición
+    calcularTotales(); // Actualizar campos calculados automáticamente
+
+    // Activar estilo de Modo Edición
     document.getElementById("cardFormulario").classList.add("editing-mode");
     document.getElementById("tituloFormulario").innerText = `✏️ Editando producto en Fila ${rowIndex}`;
     document.getElementById("badgeModo").classList.remove("d-none");
@@ -232,11 +269,18 @@
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  // Guardar (Crear nuevo o Actualizar existente)
+  // Guardar (Nuevo Registro o Actualización de Fila Existente)
   document.getElementById("formInventario").addEventListener("submit", async (e) => {
     e.preventDefault();
     const btn = document.getElementById("btnGuardar");
     btn.disabled = true;
+
+    const stockActual = parseNumero(document.getElementById("stockActual").value);
+    const stockInicial = parseNumero(document.getElementById("stockInicial").value);
+    const precioCosto = parseNumero(document.getElementById("precioCosto").value);
+
+    const valorTotalActual = stockActual * precioCosto;
+    const valorTotalStock = stockInicial * precioCosto;
 
     const payload = {
       codigo: document.getElementById("codigo").value,
@@ -245,10 +289,12 @@
       lote: document.getElementById("lote").value,
       fechaVencimiento: document.getElementById("fechaVencimiento").value,
       unidad: document.getElementById("unidad").value,
-      stockInicial: parseFloat(document.getElementById("stockInicial").value) || 0,
-      stockActual: parseFloat(document.getElementById("stockActual").value) || 0,
-      precioCosto: parseFloat(document.getElementById("precioCosto").value) || 0,
+      stockActual: stockActual,
+      valorTotalActual: valorTotalActual,
       estadoActual: document.getElementById("estadoActual").value,
+      stockInicial: stockInicial,
+      precioCosto: precioCosto,
+      valorTotalStock: valorTotalStock,
       estado: document.getElementById("estado").value,
       rowIndex: document.getElementById("rowIndex").value
     };
@@ -258,16 +304,18 @@
       limpiarFormulario();
       await cargarInventario();
     } catch (err) {
-      alert("Error al guardar o actualizar.");
+      alert("Error al guardar o actualizar el registro.");
     } finally {
       btn.disabled = false;
     }
   });
 
-  // Limpiar formulario y resetear a Modo Registro
+  // Limpiar formulario y volver a Modo Registro
   function limpiarFormulario() {
     document.getElementById("formInventario").reset();
     document.getElementById("rowIndex").value = "";
+    document.getElementById("valorTotalActual").value = "S/ 0.00";
+    document.getElementById("valorTotalStock").value = "S/ 0.00";
     document.getElementById("cardFormulario").classList.remove("editing-mode");
     document.getElementById("tituloFormulario").innerText = "📝 Formulario de Registro / Edición";
     document.getElementById("badgeModo").classList.add("d-none");
@@ -275,14 +323,14 @@
     document.getElementById("btnGuardar").className = "btn btn-primary px-4";
   }
 
-  // Eliminar fila
+  // Eliminar Fila
   async function eliminarFila(rowIndex) {
     if (!confirm(`¿Estás seguro de eliminar el producto de la fila ${rowIndex}?`)) return;
     await fetch(API_URL, { method: "POST", body: JSON.stringify({ action: "delete", rowIndex: rowIndex }) });
     cargarInventario();
   }
 
-  // Exportar a Excel
+  // Exportar la vista actual a Excel (.xlsx)
   function descargarExcel() {
     if (!datosActuales || datosActuales.length === 0) {
       alert("No hay datos disponibles para exportar.");
@@ -297,6 +345,7 @@
     XLSX.writeFile(wb, `Inventario_Dental_${fecha}.xlsx`);
   }
 
+  // Inicio de carga de datos
   cargarInventario();
   setInterval(cargarInventario, 5000);
 </script>
