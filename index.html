@@ -3,11 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Inventario - Google Sheets</title>
+    <title>Control Total de Inventario</title>
     <style>
         :root {
             --primary: #0f766e;
             --primary-hover: #115e59;
+            --danger: #dc2626;
+            --danger-hover: #b91c1c;
             --bg: #f8fafc;
             --card-bg: #ffffff;
             --text: #1e293b;
@@ -23,7 +25,7 @@
         }
 
         .container {
-            max-width: 1100px;
+            max-width: 1200px;
             margin: 0 auto;
         }
 
@@ -35,10 +37,7 @@
             margin-bottom: 2rem;
         }
 
-        h2, h3 {
-            color: var(--primary);
-            margin-top: 0;
-        }
+        h2, h3 { color: var(--primary); margin-top: 0; }
 
         .row {
             display: flex;
@@ -46,9 +45,7 @@
             margin-bottom: 1rem;
         }
 
-        .form-group {
-            flex: 1;
-        }
+        .form-group { flex: 1; }
 
         label {
             display: block;
@@ -66,16 +63,9 @@
             box-sizing: border-box;
         }
 
-        input:focus {
-            outline: none;
-            border-color: var(--primary);
-        }
+        input:focus { outline: none; border-color: var(--primary); }
 
-        .btn-group {
-            display: flex;
-            gap: 10px;
-            margin-top: 1rem;
-        }
+        .btn-group { display: flex; gap: 10px; margin-top: 1rem; }
 
         .btn {
             flex: 1;
@@ -111,10 +101,7 @@
         .status.success { background-color: #dcfce7; color: #166534; display: block; }
         .status.error { background-color: #fee2e2; color: #991b1b; display: block; }
 
-        /* Estilos de la tabla de inventario */
-        .table-container {
-            overflow-x: auto;
-        }
+        .table-container { overflow-x: auto; }
 
         table {
             width: 100%;
@@ -129,39 +116,45 @@
             white-space: nowrap;
         }
 
-        th {
-            background-color: #f1f5f9;
-            color: var(--primary);
-            font-weight: 700;
-        }
+        th { background-color: #f1f5f9; color: var(--primary); font-weight: 700; }
 
-        tr:hover {
-            background-color: #f8fafc;
-        }
+        tr:hover { background-color: #f8fafc; }
 
         .btn-edit {
             background-color: #0284c7;
             color: white;
             border: none;
-            padding: 4px 10px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            margin-right: 5px;
+        }
+
+        .btn-edit:hover { background-color: #0369a1; }
+
+        .btn-delete {
+            background-color: var(--danger);
+            color: white;
+            border: none;
+            padding: 4px 8px;
             border-radius: 4px;
             cursor: pointer;
             font-weight: 600;
         }
 
-        .btn-edit:hover { background-color: #0369a1; }
+        .btn-delete:hover { background-color: var(--danger-hover); }
     </style>
 </head>
 <body>
 
 <div class="container">
     
-    <!-- Formulario para agregar / editar -->
+    <!-- Formulario Agregar/Editar -->
     <div class="card">
-        <h2 id="formTitle">Agregar Registro de Inventario</h2>
+        <h2 id="formTitle">Agregar / Editar Registro</h2>
         
         <form id="sheetForm">
-            <!-- Campo oculto para saber qué fila estamos editando -->
             <input type="hidden" id="rowIndex" value="">
 
             <div class="row">
@@ -222,20 +215,20 @@
         <div id="statusMessage" class="status"></div>
     </div>
 
-    <!-- Tabla del inventario abajo -->
+    <!-- Tabla del Inventario con opciones para Editar y Borrar -->
     <div class="card">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <h3>Inventario Actualizado</h3>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h3>Inventario de Google Sheets</h3>
             <button class="btn" style="width: auto; padding: 0.4rem 1rem;" onclick="cargarInventario()">🔄 Actualizar Tabla</button>
         </div>
 
         <div class="table-container">
-            <table id="inventoryTable">
+            <table>
                 <thead>
                     <tr id="tableHeader"></tr>
                 </thead>
                 <tbody id="tableBody">
-                    <tr><td colspan="12">Cargando datos...</td></tr>
+                    <tr><td colspan="12">Cargando inventario...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -254,10 +247,9 @@
     
     let inventarioData = [];
 
-    // Cargar inventario al abrir la página
     window.addEventListener('DOMContentLoaded', cargarInventario);
 
-    // Obtener y renderizar inventario
+    // Obtener y cargar la tabla desde Google Sheets
     async function cargarInventario() {
         try {
             const res = await fetch(SCRIPT_URL);
@@ -269,8 +261,8 @@
             headerRow.innerHTML = '';
             tableBody.innerHTML = '';
 
-            if (inventarioData.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="12">No hay datos.</td></tr>';
+            if (inventarioData.length <= 1) {
+                tableBody.innerHTML = '<tr><td colspan="12">La hoja está vacía o solo contiene encabezados.</td></tr>';
                 return;
             }
 
@@ -278,28 +270,34 @@
             inventarioData[0].forEach(col => {
                 headerRow.innerHTML += `<th>${col}</th>`;
             });
-            headerRow.innerHTML += `<th>Acción</th>`;
+            headerRow.innerHTML += `<th>Acciones</th>`;
 
-            // Filas
+            // Filas de datos
             for (let i = 1; i < inventarioData.length; i++) {
                 const row = inventarioData[i];
+                const realRowIndex = i + 1; // Índice real de fila en Google Sheets
+                
                 let rowHtml = '<tr>';
                 row.forEach(cell => {
                     rowHtml += `<td>${cell}</td>`;
                 });
-                // Botón editar con el índice de fila real de Excel (i + 1)
-                rowHtml += `<td><button class="btn-edit" onclick="prepararEdicion(${i + 1})">✏️ Editar</button></td>`;
+                
+                // Botones Editar y Borrar
+                rowHtml += `<td>
+                    <button class="btn-edit" onclick="prepararEdicion(${realRowIndex})">✏️ Editar</button>
+                    <button class="btn-delete" onclick="eliminarFila(${realRowIndex}, '${row[1]}')">🗑️ Borrar</button>
+                </td>`;
                 rowHtml += '</tr>';
+                
                 tableBody.innerHTML += rowHtml;
             }
         } catch (error) {
-            console.error("Error al cargar datos:", error);
+            console.error("Error al cargar inventario:", error);
         }
     }
 
-    // Cargar datos de la fila en el formulario para editar
+    // Cargar datos en el formulario para editar una fila
     function prepararEdicion(rowIndex) {
-        // En inventarioData la fila 1 equivale al índice 0 (encabezado)
         const rowData = inventarioData[rowIndex - 1];
 
         document.getElementById('rowIndex').value = rowIndex;
@@ -314,18 +312,42 @@
         document.getElementById('proveedor').value = rowData[8] || '';
         document.getElementById('costo').value = rowData[9] || 0;
 
-        // Cambiar título e interfaz
-        formTitle.textContent = `Editando Fila #${rowIndex} (ID: ${rowData[0]})`;
+        formTitle.textContent = `Editando Fila #${rowIndex}`;
         submitBtn.textContent = 'Guardar Cambios';
         cancelBtn.style.display = 'inline-block';
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    // Limpiar formulario y restablecer botones
+    // Función para Borrar una fila elegida
+    async function eliminarFila(rowIndex, nombreProducto) {
+        if (!confirm(`¿Estás seguro de que deseas eliminar el producto "${nombreProducto}" (Fila ${rowIndex})?`)) {
+            return;
+        }
+
+        try {
+            await fetch(SCRIPT_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({
+                    action: "delete",
+                    rowIndex: rowIndex
+                })
+            });
+
+            statusMessage.className = 'status success';
+            statusMessage.textContent = `Fila ${rowIndex} eliminada con éxito.`;
+            setTimeout(cargarInventario, 1500);
+        } catch (error) {
+            statusMessage.className = 'status error';
+            statusMessage.textContent = 'Error al intentar eliminar la fila.';
+        }
+    }
+
     function resetForm() {
         form.reset();
         document.getElementById('rowIndex').value = '';
-        formTitle.textContent = 'Agregar Registro de Inventario';
+        formTitle.textContent = 'Agregar / Editar Registro';
         submitBtn.textContent = 'Guardar en Google Sheets';
         cancelBtn.style.display = 'none';
     }
@@ -334,8 +356,10 @@
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
 
+        const rawRowIndex = document.getElementById('rowIndex').value;
+
         const payload = {
-            rowIndex: document.getElementById('rowIndex').value ? parseInt(document.getElementById('rowIndex').value) : null,
+            rowIndex: rawRowIndex ? parseInt(rawRowIndex) : null,
             id: document.getElementById('id').value,
             producto: document.getElementById('producto').value,
             categoria: document.getElementById('categoria').value,
@@ -360,12 +384,12 @@
             });
 
             statusMessage.className = 'status success';
-            statusMessage.textContent = '¡Información actualizada con éxito!';
+            statusMessage.textContent = '¡Registro guardado correctamente!';
             resetForm();
-            setTimeout(cargarInventario, 1500); // Recargar tabla
+            setTimeout(cargarInventario, 1500);
         } catch (error) {
             statusMessage.className = 'status error';
-            statusMessage.textContent = 'Ocurrió un error al enviar.';
+            statusMessage.textContent = 'Error al guardar los cambios.';
         } finally {
             submitBtn.disabled = false;
         }
