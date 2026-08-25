@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🦷 Control de Inventario Dental</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: #f4f7fc;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            max-width: 750px;
+            width: 100%;
+            padding: 35px 30px;
+            border-radius: 28px;
+            box-shadow: 0 20px 40px -12px rgba(0, 20, 30, 0.25);
+            border: 1px solid rgba(0, 123, 255, 0.1);
+        }
+
+        h1 {
+            font-size: 1.9rem;
+            font-weight: 600;
+            color: #0b2b40;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        h1 small {
+            font-size: 0.9rem;
+            font-weight: 400;
+            color: #5e7a93;
+            margin-left: auto;
+        }
+
+        .subtitle {
+            color: #4a6679;
+            margin-bottom: 30px;
+            border-left: 4px solid #2a7de1;
+            padding-left: 16px;
+            font-size: 0.95rem;
+        }
+
+        .card {
+            background: #f8faff;
+            border-radius: 18px;
+            padding: 20px 22px;
+            margin-bottom: 24px;
+            border: 1px solid #e6edf5;
+            transition: 0.2s;
+        }
+
+        .card:hover {
+            border-color: #b6d0e8;
+        }
+
+        .card-title {
+            font-weight: 600;
+            color: #1c3b53;
+            font-size: 1rem;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 6px;
+        }
+
+        .form-group label {
+            font-weight: 500;
+            color: #1f3e57;
+            min-width: 70px;
+            font-size: 0.9rem;
+        }
+
+        .form-group input {
+            flex: 1;
+            min-width: 160px;
+            padding: 12px 16px;
+            border: 2px solid #dce5ef;
+            border-radius: 14px;
+            font-size: 1rem;
+            background: white;
+            transition: 0.2s;
+            outline: none;
+        }
+
+        .form-group input:focus {
+            border-color: #2a7de1;
+            box-shadow: 0 0 0 3px rgba(42, 125, 225, 0.15);
+        }
+
+        .form-group input::placeholder {
+            color: #a6b9cc;
+            font-weight: 400;
+        }
+
+        .btn-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 18px;
+        }
+
+        .btn {
+            padding: 12px 28px;
+            border: none;
+            border-radius: 40px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            background: #e9eef3;
+            color: #1f3e57;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1 0 auto;
+            justify-content: center;
+        }
+
+        .btn-primary {
+            background: #1a5fb4;
+            color: white;
+            box-shadow: 0 6px 14px rgba(26, 95, 180, 0.25);
+        }
+        .btn-primary:hover {
+            background: #0f4a8a;
+            transform: scale(1.01);
+        }
+
+        .btn-success {
+            background: #1e7e34;
+            color: white;
+            box-shadow: 0 6px 14px rgba(30, 126, 52, 0.2);
+        }
+        .btn-success:hover {
+            background: #146128;
+            transform: scale(1.01);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 2px solid #d0dce9;
+        }
+        .btn-outline:hover {
+            background: #eef4fa;
+            border-color: #a0b8d0;
+        }
+
+        .response-box {
+            margin-top: 24px;
+            padding: 16px 20px;
+            border-radius: 16px;
+            background: #f1f5f9;
+            border-left: 5px solid #8ba0b5;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            color: #1b2d3f;
+            word-break: break-word;
+            transition: 0.2s;
+        }
+
+        .response-box.success {
+            background: #e6f6ea;
+            border-left-color: #1e7e34;
+        }
+        .response-box.error {
+            background: #fde8e8;
+            border-left-color: #c92a2a;
+        }
+
+        .badge {
+            background: #dce5ef;
+            padding: 2px 12px;
+            border-radius: 30px;
+            font-size: 0.7rem;
+            color: #2f4b66;
+        }
+
+        hr {
+            border: none;
+            border-top: 2px dashed #d7e2ee;
+            margin: 24px 0;
+        }
+
+        @media (max-width: 550px) {
+            .container { padding: 20px 16px; }
+            h1 { font-size: 1.5rem; flex-wrap: wrap; }
+            .form-group { flex-direction: column; align-items: stretch; }
+            .form-group label { min-width: auto; }
+            .btn { flex: 1 1 100%; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>
+        🦷 Inventario Dental
+        <small>v1.0</small>
+    </h1>
+    <div class="subtitle">
+        ⚡ Actualiza tu stock en Google Sheets en tiempo real desde aquí.
+    </div>
+
+    <!-- ========== SECCIÓN 1: ACTUALIZAR STOCK ========== -->
+    <div class="card">
+        <div class="card-title">📦 1. Actualizar stock existente</div>
+        <div class="form-group">
+            <label for="productId">ID Producto</label>
+            <input type="text" id="productId" placeholder="Ej: RES-001, ANE-002" autofocus>
+        </div>
+        <div class="form-group">
+            <label for="newStock">Nuevo Stock</label>
+            <input type="number" id="newStock" placeholder="Cantidad actualizada" min="0">
+        </div>
+        <div class="btn-group">
+            <button class="btn btn-primary" onclick="actualizarStock()">📤 Actualizar Stock</button>
+            <button class="btn btn-outline" onclick="limpiarCampos()">🗑️ Limpiar</button>
+        </div>
+    </div>
+
+    <!-- ========== SECCIÓN 2: CREAR PRODUCTO NUEVO ========== -->
+    <hr>
+    <div class="card">
+        <div class="card-title">🆕 2. Crear producto nuevo <span class="badge">Completo</span></div>
+        <div class="form-group">
+            <label for="newId">ID Nuevo</label>
+            <input type="text" id="newId" placeholder="Ej: RES-100, IMP-005">
+        </div>
+        <div class="form-group">
+            <label for="newName">Nombre</label>
+            <input type="text" id="newName" placeholder="Ej: Resina Flow A2">
+        </div>
+        <div class="form-group">
+            <label for="newCat">Categoría</label>
+            <input type="text" id="newCat" placeholder="Consumibles, Farmacia, Instrumental...">
+        </div>
+        <div class="form-group">
+            <label for="newStockInit">Stock Inicial</label>
+            <input type="number" id="newStockInit" placeholder="0" min="0">
+        </div>
+        <div class="form-group">
+            <label for="newMin">Stock Mínimo</label>
+            <input type="number" id="newMin" placeholder="5" min="0">
+        </div>
+        <div class="form-group">
+            <label for="newUbic">Ubicación</label>
+            <input type="text" id="newUbic" placeholder="Box 1, Nevera, Almacén...">
+        </div>
+        <div class="form-group">
+            <label for="newCad">Caducidad</label>
+            <input type="date" id="newCad">
+        </div>
+        <div class="form-group">
+            <label for="newLote">Lote</label>
+            <input type="text" id="newLote" placeholder="LOTE-XXX">
+        </div>
+        <div class="form-group">
+            <label for="newProv">Proveedor</label>
+            <input type="text" id="newProv" placeholder="Nombre del distribuidor">
+        </div>
+        <div class="form-group">
+            <label for="newCosto">Costo (S/.)</label>
+            <input type="number" id="newCosto" placeholder="0.00" step="0.01" min="0">
+        </div>
+        <div class="btn-group">
+            <button class="btn btn-success" onclick="crearProducto()">➕ Crear Producto</button>
+        </div>
+    </div>
+
+    <!-- ========== RESPUESTA DEL SERVIDOR ========== -->
+    <div id="responseArea" class="response-box">
+        ✅ Esperando acción... (Los cambios se ven en Google Sheets)
+    </div>
+</div>
+
+<script>
+    // ============================================================
+    // 🔴 IMPORTANTE: REEMPLAZA ESTA URL CON LA DE TU WEB APP
+    // ============================================================
+    const WEB_APP_URL = 'AQUI_VA_TU_URL_DE_LA_WEB_APP'; 
+    // ============================================================
+
+    // Elementos del DOM
+    const responseDiv = document.getElementById('responseArea');
+
+    // --- Funciones Auxiliares ---
+    function mostrarRespuesta(mensaje, tipo = 'info') {
+        responseDiv.textContent = mensaje;
+        responseDiv.className = 'response-box';
+        if (tipo === 'success') responseDiv.classList.add('success');
+        if (tipo === 'error') responseDiv.classList.add('error');
+    }
+
+    function limpiarCampos() {
+        document.getElementById('productId').value = '';
+        document.getElementById('newStock').value = '';
+        mostrarRespuesta('🧹 Campos limpiados. Listo para nueva acción.', 'info');
+        document.getElementById('productId').focus();
+    }
+
+    // --- Función Genérica para llamar a la API ---
+    async function llamarAPI(datos) {
+        if (WEB_APP_URL === 'AQUI_VA_TU_URL_DE_LA_WEB_APP') {
+            mostrarRespuesta('❌ ERROR: No has configurado la URL de la Web App en el código HTML. Reemplaza la variable "WEB_APP_URL".', 'error');
+            return;
+        }
+
+        try {
+            mostrarRespuesta('⏳ Enviando datos a Google Sheets...', 'info');
+
+            const response = await fetch(WEB_APP_URL, {
+                method: 'POST',
+                mode: 'no-cors', // Importante para Apps Script
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(datos)
+            });
+
+            // 🔥 IMPORTANTE: Con 'no-cors', no podemos leer la respuesta directamente.
+            // Apps Script responderá, pero el navegador la bloquea por seguridad.
+            // Para este caso, asumimos éxito si no hay error de red.
+            // La verificación REAL la hacemos revisando la hoja.
+            mostrarRespuesta('✅ ¡Petición enviada! Revisa tu Google Sheet para confirmar el cambio.\n(Recuerda: en modo "no-cors" no podemos leer la respuesta del servidor directamente).', 'success');
+
+            // Si quieres leer la respuesta REAL, cambia 'mode' a 'cors' y despliega la Web App con acceso "Cualquier persona".
+            // Pero para la mayoría de pruebas internas, 'no-cors' funciona perfecto para escribir.
+
+        } catch (error) {
+            mostrarRespuesta(`❌ Error de red: ${error.message}. Verifica tu conexión o que la URL sea correcta.`, 'error');
+            console.error('Error:', error);
+        }
+    }
+
+    // --- Acción 1: Actualizar Stock ---
+    function actualizarStock() {
+        const id = document.getElementById('productId').value.trim();
+        const cantidad = document.getElementById('newStock').value.trim();
+
+        if (!id) {
+            mostrarRespuesta('❌ Escribe el ID del producto (ej: RES-001).', 'error');
+            document.getElementById('productId').focus();
+            return;
+        }
+        if (cantidad === '' || isNaN(cantidad) || parseInt(cantidad) < 0) {
+            mostrarRespuesta('❌ Ingresa una cantidad numérica válida (0 o más).', 'error');
+            document.getElementById('newStock').focus();
+            return;
+        }
+
+        const payload = {
+            id: id,
+            cantidad: parseInt(cantidad)
+        };
+
+        llamarAPI(payload);
+    }
+
+    // --- Acción 2: Crear Producto Nuevo ---
+    function crearProducto() {
+        const id = document.getElementById('newId').value.trim();
+        const nombre = document.getElementById('newName').value.trim();
+        const cat = document.getElementById('newCat').value.trim();
+        const stock = document.getElementById('newStockInit').value.trim();
+        const min = document.getElementById('newMin').value.trim();
+        const ubic = document.getElementById('newUbic').value.trim();
+        const cad = document.getElementById('newCad').value;
+        const lote = document.getElementById('newLote').value.trim();
+        const prov = document.getElementById('newProv').value.trim();
+        const costo = document.getElementById('newCosto').value.trim();
+
+        if (!id) {
+            mostrarRespuesta('❌ El campo "ID Nuevo" es obligatorio.', 'error');
+            document.getElementById('newId').focus();
+            return;
+        }
+
+        const payload = {
+            id: id,
+            producto: nombre || 'Nuevo Producto',
+            categoria: cat || 'General',
+            cantidad: stock ? parseInt(stock) : 0,
+            stockMin: min ? parseInt(min) : 0,
+            ubicacion: ubic || 'Almacén',
+            caducidad: cad || '',
+            lote: lote || '',
+            proveedor: prov || '',
+            costo: costo ? parseFloat(costo) : 0
+        };
+
+        llamarAPI(payload);
+    }
+
+    // --- Atajos de teclado (presionar Enter) ---
+    document.addEventListener('DOMContentLoaded', function() {
+        // Enter en campo ID o Stock dispara actualizar
+        document.getElementById('productId').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                document.getElementById('newStock').focus();
+            }
+        });
+        document.getElementById('newStock').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                actualizarStock();
+            }
+        });
+    });
+</script>
+
+</body>
+</html>
